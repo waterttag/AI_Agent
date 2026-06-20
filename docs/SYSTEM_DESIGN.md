@@ -184,3 +184,107 @@ LLMAdapter (ABC)
 - **Task 记录**: 保存 system_prompt_used, user_prompt_used, llm_response_raw (截断至10KB)
 - **前端**: Task 轮询 (TanStack Query, 2s间隔)，进度条 + Pipeline 步骤可视化
 - **FastAPI**: 自动 OpenAPI docs + /health 健康检查端点
+
+---
+
+## 9. 设计决策 FAQ（工程交付参考）
+
+### 9.1 系统架构
+
+**Q: 前端、后端、异步任务 Agent Orchestrator、数据库、对象存储之间如何协作？**
+
+前端 (React+Vite) 通过 REST API 与 FastAPI 后端通信。生成游戏时，FastAPI 不直接调用 LLM（耗时 30-120s 会阻塞整个请求），而是将任务入队到 Celery（Redis 为消息代理）。Celery Worker 独立进程异步执行 4 阶段 Pipeline。生成的游戏文件上传到 MinIO/S3 对象存储，前端通过 iframe 动态加载。
+
+```
+浏览器 → HTTP → FastAPI → Celery Queue → Worker → LLM API → MinIO → 浏览器 iframe
+                 ↕        ↕
+             SQLite/PG   Redis
+```
+
+**Q: 为什么用 Celery + Redis 而不是 FastAPI 的 BackgroundTasks？**
+
+BackgroundTasks 在主进程中执行，LLM 调用 30-120s 会阻塞整个 API worker。Celery 独立进程 + Redis 消息队列，解耦请求和生成，支持水平扩展 Worker。
+
+**Q: 为什么用 SQLite 开发 + PostgreSQL 生产？**
+
+SQLAlchemy 2.0 async ORM 抽象层隔离差异，改 `DATABASE_URL` 一行切换。SQLite 零配置启动开发环境，PostgreSQL 提供生产级并发和 JSONB 索引。
+
+### 9.2 数据模型
+
+**Q: 用户、游戏、素材、生成任务、Agent日志、状态如何建模？**
+
+4 表拆分为独立实体而非单表扁平化：
+
+- `users` — 账号与认证分离，role 字段留 OAuth 扩展空间
+- `games` — 游戏元信息 + `status` 状态机 (draft→generating→preview→published→failed)，tags 用 JSON 灵活支持任意标签
+- `game_assets` — 多对一关联 games，独立存储 OSS key，方便增删
+- `generation_tasks` — 生成过程与游戏结果解耦，历史可追溯。保存完整 prompt + LLM 响应用于调试
+
+**Q: 为什么 tags 用 JSON 而非关联表？**
+
+游戏标签数量少（≤10）且无需跨游戏聚合查询。JSON 列避免了额外 join 表，SQLite/PG 均支持 LIKE/JSONB 查询。引入 GIN 索引后 PG 性能可达到关联表级别。
+
+### 9.3 Agent 选型
+
+**Q: 为什么用自建适配器工厂，而不是 OpenClaw、Hermes、Pi Agent、LangGraph 等成熟框架？**
+
+**核心原因：MVP 复杂度控制 + 隔离供应商依赖。**
+
+- **OpenClaw / Hermes / Pi Agent**：这些是完整 Agent 框架，提供多步骤推理、工具调用、记忆管理。但本项目的核心任务是"一段 prompt → 一个 HTML 文件"的单次生成，不需要多步拆解和多工具编排。引入框架徒增认知负担和依赖耦合。
+- **LangGraph**：适合有状态、多节点、条件分支的复杂 Agent 工作流。当前流水线是线性的（Preprocess→Generate→Validate→Upload），状态机用简单的 status 字段 + Celery 即可表达，LangGraph 在 MVP 阶段过度设计。
+- **适配器工厂 (ABC + env switch)**：3 个文件实现多 LLM 切换。新增供应商只需实现 `LLMAdapter` 两个方法（`generate`, `describe_image`），无框架锁定。
+
+**扩展路径**：若未来需要多 Agent 协作（如策划 Agent + 美术 Agent + 代码 Agent 分工），迁移到 LangGraph 成本低——已有 Pipeline 中的每个 Phase 可无损映射为 LangGraph Node。
+
+### 9.4 远端部署协议
+
+**Q: 可运行游戏用什么文件结构？为什么是单文件 HTML？**
+
+**格式**: 单文件 `.html`，CSS 内联 `<style>` + JS 内联 `<script>` + CDN 引用。
+
+**为什么不用 manifest / bundle / 多文件目录？**
+
+1. **存储简单**：对象存储中每个游戏只有一个文件，路径 `games/{uuid}/index.html`
+2. **传输高效**：一次 HTTP GET 即可加载全部游戏内容
+3. **LLM 友好**：要求 LLM 输出单文件不依赖外部路径解析，模型天然擅长
+4. **沙箱安全**：iframe sandbox 加载单文件，无相对路径跨越问题
+5. **跨平台**：移动端、桌面端、任何浏览器都能打开自包含 HTML
+
+### 9.5 安全策略
+
+**Q: 如何处理上传素材、Prompt Injection、生成代码执行、密钥管理、资源控制？**
+
+| 威胁 | 措施 |
+|------|------|
+| **上传素材安全** | MIME 白名单（image/*, audio/*），最大 10 文件，单文件限制 10MB（FastAPI Form 嵌套校验） |
+| **Prompt Injection** | 用户 prompt 仅作为 User Message 传入（非 System Prompt），LLM 输出不包含执行权限 |
+| **生成代码执行** | `<iframe sandbox="allow-scripts allow-same-origin">` 双层隔离：不允许 `allow-top-navigation`、`allow-popups`；Validator 静态检查 `eval()` |
+| **密钥管理** | LLM_API_KEY、JWT_SECRET 仅存于 `.env`，`.gitignore` 排除。生产环境由 Railway/Render Secret Manager 注入 |
+| **资源控制** | `max_tokens: 16000` 限制 LLM 成本上限，Worker `--pool=solo` 串行执行防止并发过载 |
+
+### 9.6 失败恢复
+
+**Q: 模型调用不稳定、上传失败、生成失败时如何定位恢复？**
+
+| 故障场景 | 恢复策略 | 可观察性 |
+|----------|---------|---------|
+| LLM API 超时/500 | Celery 自动重试 1 次（60s delay），仍失败写入 error_message | task.status = failed，前端展示错误原因 |
+| HTML 校验失败 | 将错误列表返回 LLM 二次修复（temperature 0.5），仍失败降级交付 | Validator 日志 + task.llm_response_raw 保存原始输出 |
+| MinIO 上传失败 | Railway 环境无 MinIO 时自动降级——HTML 存入 generation_tasks.llm_response_raw，通过 `/api/games/{id}/play-html` 直接服务 | 日志：`MinIO upload failed, storing in DB` |
+| 素材描述失败 | Vision API 不可用时跳过该素材，其余素材正常注入 Prompt | 日志：`Failed to describe image`，任务继续 |
+| 部署重启丢数据 | 后端 startup 检测空 DB，自动调用 `_auto_seed()` 注入 3 款种子游戏 + demo 用户 | `/health` 即可验证 |
+
+### 9.7 可观测性
+
+**Q: 如何记录生成过程、Agent 执行动作、用户体验？提供证据。**
+
+| 观察维度 | 记录方式 | 证据路径 |
+|----------|---------|---------|
+| **任务进度** | Celery 任务状态机（pending→processing→completed/failed），数据库 `generation_tasks` 表实时更新 progress | `GET /api/tasks/{id}` |
+| **Agent 日志** | Python logging，每个 Phase 输出 `[task_id] Phase N: ...` | Docker logs / Railway Deploy Logs |
+| **LLM 调用记录** | `generation_tasks` 保存 `system_prompt_used`、`user_prompt_used`、`llm_response_raw` 完整链路 | 数据库查询 |
+| **用户操作** | 前端 TanStack Query devtools + 浏览器 Network 面板 | F12 截图 |
+| **系统健康** | `/health` 端点 + Readiness 检查 | `curl /health` |
+| **验证证明** | `docs/VERIFICATION.md` 包含 16 项自动化测试 + 安全验证 + 性能数据 | 交付文档 |
+
+**提示：** 演示时可打开浏览器 F12 → Network 面板，展示 API 请求序列（register → login → create → generate → poll → play），作为可观测性证据。
