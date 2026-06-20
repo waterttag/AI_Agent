@@ -1,13 +1,16 @@
 """Authentication API routes."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
+from app.schemas.game import GameResponse
 from app.services.auth_service import register_user, login_user, AuthError
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.models.game import GameFavorite, Game
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -34,3 +37,12 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
 async def get_me(current_user: User = Depends(get_current_user)):
     """Get the currently authenticated user's profile."""
     return UserResponse.model_validate(current_user)
+
+
+@router.get("/me/favorites", response_model=list[str])
+async def get_my_favorite_ids(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Get IDs of games favorited by the current user."""
+    result = await db.execute(
+        select(GameFavorite.game_id).where(GameFavorite.user_id == current_user.id)
+    )
+    return [row[0] for row in result.all()]

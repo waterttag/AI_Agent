@@ -64,3 +64,12 @@ class GameAsset(Base):
 
     def __repr__(self) -> str:
         return f"<GameAsset(id={self.id}, type={self.asset_type})>"
+
+
+import uuid as _uuid
+class GameFavorite(Base):
+    __tablename__ = "game_favorites"
+
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), primary_key=True, default=lambda: str(_uuid.uuid4()))
+    game_id: Mapped[str] = mapped_column(String(36), ForeignKey("games.id"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)

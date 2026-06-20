@@ -5,8 +5,9 @@ import { useAuthStore } from "@/lib/auth-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home, Send, Eye, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home, Send, Eye, History, ChevronDown, ChevronUp, Heart } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
+import { useToggleFavorite, useFavoriteStatus } from "@/hooks/useFavorites";
 import { useState, useEffect } from "react";
 
 export function PlayPage() {
@@ -21,6 +22,8 @@ export function PlayPage() {
   const isPreview = game?.status === "preview";
   const [showHistory, setShowHistory] = useState(false);
   const { data: tasks } = useTasks(isAuthor ? gameId! : null);
+  const { data: favStatus } = useFavoriteStatus(gameId!);
+  const toggleFav = useToggleFavorite();
 
   // Listen for Escape to exit fullscreen
   useEffect(() => {
@@ -71,10 +74,23 @@ export function PlayPage() {
                 ))}
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setFullscreen(true)}>
-              <Maximize2 className="mr-2 h-4 w-4" />
-              Fullscreen
-            </Button>
+            <div className="flex items-center gap-2">
+              {user && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleFav.mutate(game.id)}
+                >
+                  <Heart className={`mr-1 h-4 w-4 ${favStatus?.favorited ? "fill-red-500 text-red-500" : ""}`} />
+                  {favStatus?.favorited ? "Favorited" : "Favorite"}
+                  {favStatus ? ` (${favStatus.count})` : ""}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setFullscreen(true)}>
+                <Maximize2 className="mr-2 h-4 w-4" />
+                Fullscreen
+              </Button>
+            </div>
           </div>
 
           {/* Description */}

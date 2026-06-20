@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.api.deps import get_current_user, get_optional_user
 from app.models.user import User
+from app.models.game import GameFavorite
 from app.schemas.game import (
     GameCreate,
     GameUpdate,
@@ -251,3 +252,54 @@ async def play_game_html(game_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="No generated HTML found for this game")
 
     return HTMLResponse(content=task.llm_response_raw)
+
+
+# --- Favorites ---
+@router.post("/{game_id}/favorite")
+async def toggle_favorite(
+    game_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Toggle favorite: add if not favorited, remove if already favorited."""
+    from sqlalchemy import select
+    result = await db.execute(
+        select(GameFavorite).where(
+            GameFavorite.user_id == current_user.id,
+            GameFavorite.game_id == game_id,
+        )
+    )
+    fav = result.scalar_one_or_none()
+    if fav:
+        await db.delete(fav)
+        await db.commit()
+        return {"favorited": False}
+    else:
+        db.add(GameFavorite(user_id=current_user.id, game_id=game_id))
+        await db.commit()
+        return {"favorited": True}
+
+
+@router.get("/{game_id}/favorite")
+async def get_favorite_status(
+    game_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Check if the current user has favorited this game, plus total count."""
+    from sqlalchemy import select, func
+    result = await db.execute(
+        select(GameFavorite).where(
+            GameFavorite.user_id == current_user.id,
+            GameFavorite.game_id == game_id,
+        )
+    )
+    favorited = result.scalar_one_or_none() is not None
+    count_result = await db.execute(
+        select(func.count()).where(GameFavorite.game_id == game_id)
+    )
+    count = count_result.scalar() or 0
+    return {"favorited": favorited, "count": count}
+
+
+# Favorites list: see GET /api/auth/me/favorites (avoids path conflict with {game_id})

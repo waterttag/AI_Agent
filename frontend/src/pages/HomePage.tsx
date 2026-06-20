@@ -4,9 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Gamepad2, Sparkles, ArrowRight, Play, User, Clock, Loader2, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Gamepad2, Sparkles, ArrowRight, Play, User, Clock, Loader2, ChevronLeft, ChevronRight, Eye, Heart } from "lucide-react";
 import { useState, useMemo } from "react";
-import apiClient from "@/lib/api-client";
+import { useFavoriteGameIds, useToggleFavorite } from "@/hooks/useFavorites";
+import { useAuthStore } from "@/lib/auth-store";
 
 // Tag → gradient map for cover images
 const COVER_GRADIENTS: Record<string, string> = {
@@ -29,13 +30,13 @@ function gameCoverGradient(tags: string[]): string {
   return COVER_GRADIENTS.default;
 }
 
-function GameCard({ game, onTagClick }: { game: any; onTagClick?: (tag: string) => void }) {
+function GameCard({ game, onTagClick, isFav, onToggleFav }: { game: any; onTagClick?: (tag: string) => void; isFav?: boolean; onToggleFav?: () => void }) {
   const navigate = useNavigate();
   const grad = gameCoverGradient(game.tags || []);
 
   return (
     <Card
-      className="group cursor-pointer overflow-hidden border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
+      className="group cursor-pointer overflow-hidden border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 relative"
       onClick={() => navigate(`/play/${game.id}`)}
     >
       <div className={`aspect-video bg-gradient-to-br ${grad} flex items-center justify-center relative overflow-hidden`}>
@@ -43,6 +44,15 @@ function GameCard({ game, onTagClick }: { game: any; onTagClick?: (tag: string) 
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
           <Play className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg" />
         </div>
+        {/* Heart button */}
+        {onToggleFav && (
+          <button
+            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/40 hover:bg-black/60 transition-colors z-10"
+            onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
+          >
+            <Heart className={`h-4 w-4 ${isFav ? "fill-red-500 text-red-500" : "text-white"}`} />
+          </button>
+        )}
       </div>
       <CardContent className="p-4 space-y-3">
         <h3 className="font-semibold text-lg truncate">{game.title}</h3>
@@ -74,9 +84,15 @@ function GameCard({ game, onTagClick }: { game: any; onTagClick?: (tag: string) 
 export function HomePage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [showFavorites, setShowFavorites] = useState(false);
   const pageSize = 12;
   const { data, isLoading, error } = useGames(page, activeTag || undefined);
+  const { data: favIds } = useFavoriteGameIds();
+  const toggleFav = useToggleFavorite();
+  const isLoggedIn = useAuthStore((s) => s.isAuthenticated);
   const navigate = useNavigate();
+
+  const favSet = useMemo(() => new Set(favIds || []), [favIds]);
 
   // Collect all tags from games
   const allTags = useMemo(() => {
@@ -121,18 +137,28 @@ export function HomePage() {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm text-muted-foreground mr-2">Filter:</span>
           <Badge
-            variant={activeTag === null ? "default" : "outline"}
+            variant={!showFavorites && activeTag === null ? "default" : "outline"}
             className="cursor-pointer"
-            onClick={() => setActiveTag(null)}
+            onClick={() => { setActiveTag(null); setShowFavorites(false); }}
           >
             All
           </Badge>
+          {isLoggedIn && (
+            <Badge
+              variant={showFavorites ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => { setActiveTag(null); setShowFavorites(!showFavorites); }}
+            >
+              <Heart className="mr-1 h-3 w-3" />
+              Favorites
+            </Badge>
+          )}
           {allTags.map((t) => (
             <Badge
               key={t}
-              variant={activeTag === t ? "default" : "outline"}
+              variant={!showFavorites && activeTag === t ? "default" : "outline"}
               className="cursor-pointer"
-              onClick={() => setActiveTag(activeTag === t ? null : t)}
+              onClick={() => { setShowFavorites(false); setActiveTag(activeTag === t ? null : t); }}
             >
               {t}
             </Badge>
@@ -156,14 +182,21 @@ export function HomePage() {
         ) : !data?.items?.length ? (
           <div className="text-center py-20 text-muted-foreground">
             <Gamepad2 className="mx-auto h-12 w-12 mb-4 opacity-30" />
-            <p>{activeTag ? `No "${activeTag}" games yet.` : "No games published yet."}</p>
-            {activeTag && <Button className="mt-4" variant="outline" onClick={() => setActiveTag(null)}>Clear Filter</Button>}
-            {!activeTag && <Button className="mt-4" variant="outline" onClick={() => navigate("/create")}>Create First Game</Button>}
+            <p>{showFavorites ? "No favorites yet." : activeTag ? `No "${activeTag}" games yet.` : "No games published yet."}</p>
+            {showFavorites && <Button className="mt-4" variant="outline" onClick={() => setShowFavorites(false)}>Show All</Button>}
+            {!showFavorites && activeTag && <Button className="mt-4" variant="outline" onClick={() => setActiveTag(null)}>Clear Filter</Button>}
+            {!showFavorites && !activeTag && <Button className="mt-4" variant="outline" onClick={() => navigate("/create")}>Create First Game</Button>}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {data.items.map((game: any) => (
-              <GameCard key={game.id} game={game} onTagClick={(t) => setActiveTag(t)} />
+            {(showFavorites ? data.items.filter((g: any) => favSet.has(g.id)) : data.items).map((game: any) => (
+              <GameCard
+                key={game.id}
+                game={game}
+                onTagClick={(t) => { setShowFavorites(false); setActiveTag(t); }}
+                isFav={favSet.has(game.id)}
+                onToggleFav={isLoggedIn ? () => toggleFav.mutate(game.id) : undefined}
+              />
             ))}
           </div>
         )}
