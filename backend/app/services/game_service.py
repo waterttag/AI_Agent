@@ -1,6 +1,6 @@
 """Game CRUD business logic."""
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -54,7 +54,8 @@ async def list_games(
         base_query = base_query.where(Game.status.in_(["published", "preview"]))
 
     if tag:
-        base_query = base_query.where(Game.tags.contains([tag]))
+        # Cross-database compatible JSON search: SQLite stores as text, PG uses JSONB
+        base_query = base_query.where(Game.tags.cast(Text).like(f'%"{tag}"%'))
 
     # Count
     count_query = select(func.count()).select_from(base_query.subquery())
