@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Game</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a1a;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; font-family: 'Courier New', monospace; overflow: hidden;
+}
+#game-container { position: relative; text-align: center; }
+canvas { border: 2px solid #333; background: #111; display: block; margin: 0 auto; }
+#score { color: #0f0; font-size: 20px; margin: 10px 0; }
+#game-over { display: none; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%,-50%); color: #f44; font-size: 32px;
+  text-shadow: 0 0 10px #f00; }
+#restart { display: none; position: absolute; top: 62%; left: 50%;
+  transform: translateX(-50%); background: #0f0; color: #000; border: none;
+  padding: 10px 24px; font-size: 18px; cursor: pointer; border-radius: 6px; font-weight: bold; }
+#restart:hover { background: #0c0; }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <div id="score">Score: 0</div>
+  <canvas id="game" width="400" height="400"></canvas>
+  <div id="game-over">Game Over!</div>
+  <button id="restart" onclick="restartGame()">Play Again</button>
+</div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const grid = 20; let count = 0;
+let snake = { x: 160, y: 200, dx: grid, dy: 0, cells: [], maxCells: 4 };
+let apple = { x: 320, y: 200 };
+let score = 0; let gameRunning = true;
+
+function getRandomInt(min, max) { return Math.floor(Math.random() * (max-min)) + min; }
+
+function loop() {
+  if (!gameRunning) return;
+  requestAnimationFrame(loop);
+  if (++count < 8) return; count = 0;
+  ctx.clearRect(0, 0, 400, 400);
+
+  snake.x += snake.dx; snake.y += snake.dy;
+  if (snake.x < 0) snake.x = 380;
+  else if (snake.x >= 400) snake.x = 0;
+  if (snake.y < 0) snake.y = 380;
+  else if (snake.y >= 400) snake.y = 0;
+
+  snake.cells.unshift({ x: snake.x, y: snake.y });
+  if (snake.cells.length > snake.maxCells) snake.cells.pop();
+
+  // Draw apple
+  ctx.fillStyle = '#f44'; ctx.fillRect(apple.x, apple.y, grid-2, grid-2);
+
+  // Draw snake
+  snake.cells.forEach((cell, i) => {
+    ctx.fillStyle = i === 0 ? '#0f0' : '#0a0';
+    ctx.fillRect(cell.x, cell.y, grid-2, grid-2);
+  });
+
+  // Collision with apple
+  if (snake.x === apple.x && snake.y === apple.y) {
+    snake.maxCells++; score += 10;
+    document.getElementById('score').textContent = 'Score: ' + score;
+    apple.x = getRandomInt(0, 20) * grid;
+    apple.y = getRandomInt(0, 20) * grid;
+  }
+
+  // Self collision
+  for (let i = 1; i < snake.cells.length; i++) {
+    if (snake.cells[i].x === snake.x && snake.cells[i].y === snake.y) {
+      endGame(); break;
+    }
+  }
+}
+
+function endGame() {
+  gameRunning = false;
+  document.getElementById('game-over').style.display = 'block';
+  document.getElementById('restart').style.display = 'block';
+}
+
+function restartGame() {
+  snake = { x: 160, y: 200, dx: grid, dy: 0, cells: [], maxCells: 4 };
+  apple = { x: 320, y: 200 }; score = 0; gameRunning = true;
+  document.getElementById('score').textContent = 'Score: 0';
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('restart').style.display = 'none';
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft' && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
+  else if (e.key === 'ArrowRight' && snake.dx === 0) { snake.dx = grid; snake.dy = 0; }
+  else if (e.key === 'ArrowUp' && snake.dy === 0) { snake.dx = 0; snake.dy = -grid; }
+  else if (e.key === 'ArrowDown' && snake.dy === 0) { snake.dx = 0; snake.dy = grid; }
+});
+
+// Touch controls
+let touchStartX = 0, touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+});
+canvas.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    if (dx > 0 && snake.dx === 0) { snake.dx = grid; snake.dy = 0; }
+    else if (dx < 0 && snake.dx === 0) { snake.dx = -grid; snake.dy = 0; }
+  } else {
+    if (dy > 0 && snake.dy === 0) { snake.dx = 0; snake.dy = grid; }
+    else if (dy < 0 && snake.dy === 0) { snake.dx = 0; snake.dy = -grid; }
+  }
+});
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
