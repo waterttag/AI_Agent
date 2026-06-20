@@ -18,7 +18,7 @@ export function useGame(gameId: string) {
   return useQuery({
     queryKey: ["game", gameId],
     queryFn: async () => {
-      const res = await apiClient.get<Game>(`/games/${gameId}`);
+      const res = await apiClient.get<Game>(`/games/${gameId}`, { params: { increment: true } });
       return res.data;
     },
     enabled: !!gameId,

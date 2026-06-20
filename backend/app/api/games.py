@@ -50,17 +50,17 @@ async def list_games(
 
 
 @router.get("/{game_id}", response_model=GameResponse)
-async def get_game(game_id: str, db: AsyncSession = Depends(get_db)):
-    """Get a single game by ID."""
+async def get_game(game_id: str, db: AsyncSession = Depends(get_db), increment: bool = Query(default=False)):
+    """Get a single game by ID. Pass ?increment=true to count as a play."""
     game = await game_service.get_game(db, game_id)
     if not game:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
     resp = GameResponse.model_validate(game)
     if game.author:
         resp.author_name = game.author.username
-    # Increment play count
-    game.play_count = (game.play_count or 0) + 1
-    await db.commit()
+    if increment:
+        game.play_count = (game.play_count or 0) + 1
+        await db.commit()
     return resp
 
 
