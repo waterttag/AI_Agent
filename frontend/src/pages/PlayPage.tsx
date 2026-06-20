@@ -3,14 +3,23 @@ import { useGame } from "@/hooks/useGames";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Loader2, ArrowLeft, Maximize2, User, Calendar, AlertTriangle, Home } from "lucide-react";
-import { useState } from "react";
+import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export function PlayPage() {
   const { gameId } = useParams<{ gameId: string }>();
   const { data: game, isLoading, error } = useGame(gameId!);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+
+  // Listen for Escape to exit fullscreen
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && fullscreen) setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
 
   if (isLoading) {
     return (
@@ -33,37 +42,50 @@ export function PlayPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
-        <div className="space-y-2">
-          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-            <ArrowLeft className="h-3 w-3" /> Back to Browse
-          </Link>
-          <h1 className="text-3xl font-bold">{game.title}</h1>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1"><User className="h-3 w-3" /> {game.author_name || "Author"}</span>
-            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(game.created_at)}</span>
+      {/* Header — hidden in fullscreen */}
+      {!fullscreen && (
+        <>
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="space-y-2">
+              <Link to="/" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                <ArrowLeft className="h-3 w-3" /> Back to Browse
+              </Link>
+              <h1 className="text-3xl font-bold">{game.title}</h1>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1"><User className="h-3 w-3" /> {game.author_name || "Author"}</span>
+                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(game.created_at)}</span>
+              </div>
+              <div className="flex gap-1.5 flex-wrap">
+                {(game.tags || []).map((t: string) => (
+                  <Badge key={t} variant="secondary">{t}</Badge>
+                ))}
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setFullscreen(true)}>
+              <Maximize2 className="mr-2 h-4 w-4" />
+              Fullscreen
+            </Button>
           </div>
-          <div className="flex gap-1.5 flex-wrap">
-            {(game.tags || []).map((t: string) => (
-              <Badge key={t} variant="secondary">{t}</Badge>
-            ))}
-          </div>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setFullscreen(!fullscreen)}>
-          <Maximize2 className="mr-2 h-4 w-4" />
-          {fullscreen ? "Exit Fullscreen" : "Fullscreen"}
-        </Button>
-      </div>
 
-      {/* Description */}
-      {game.description && (
-        <p className="text-muted-foreground">{game.description}</p>
+          {/* Description */}
+          {game.description && (
+            <p className="text-muted-foreground">{game.description}</p>
+          )}
+        </>
       )}
 
       {/* Game Player */}
       {game.game_url ? (
         <div className={`rounded-lg border border-border overflow-hidden bg-black ${fullscreen ? "fixed inset-0 z-50" : "aspect-video"}`}>
+          {/* Fullscreen exit button */}
+          {fullscreen && (
+            <div className="absolute top-4 right-4 z-[60] flex gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setFullscreen(false)}>
+                <Minimize2 className="mr-2 h-4 w-4" /> Exit Fullscreen
+              </Button>
+              <Link to="/"><Button variant="outline" size="sm"><Home className="mr-2 h-4 w-4" /> Home</Button></Link>
+            </div>
+          )}
           {iframeError ? (
             <div className="flex flex-col items-center justify-center h-full gap-4 bg-card">
               <AlertTriangle className="h-12 w-12 text-yellow-500" />
@@ -102,17 +124,21 @@ export function PlayPage() {
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-4">
-        <Link to="/"><Button variant="outline"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Browse</Button></Link>
-      </div>
+      {/* Actions — hidden in fullscreen */}
+      {!fullscreen && (
+        <>
+          <div className="flex items-center gap-4">
+            <Link to="/"><Button variant="outline"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Browse</Button></Link>
+          </div>
 
-      {/* Prompt (if available) */}
-      {game.prompt_text && (
-        <div className="p-4 rounded-lg bg-secondary/30 border border-border">
-          <h3 className="text-sm font-medium text-muted-foreground mb-1">Generation Prompt</h3>
-          <p className="text-sm italic">"{game.prompt_text}"</p>
-        </div>
+          {/* Prompt (if available) */}
+          {game.prompt_text && (
+            <div className="p-4 rounded-lg bg-secondary/30 border border-border">
+              <h3 className="text-sm font-medium text-muted-foreground mb-1">Generation Prompt</h3>
+              <p className="text-sm italic">"{game.prompt_text}"</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
