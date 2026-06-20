@@ -106,9 +106,13 @@ class GameGenerationHarness:
 
         await self._update_progress(task_id, 85, "processing")
 
-        # Package and upload to MinIO
-        logger.info(f"[{task_id}] Phase 4: Uploading to MinIO")
-        oss_url = await self.packager.package_and_upload(game_id, html_code)
+        # Package and upload to MinIO (or fallback to DB storage)
+        logger.info(f"[{task_id}] Phase 4: Packaging & uploading")
+        try:
+            oss_url = await self.packager.package_and_upload(game_id, html_code)
+        except Exception as e:
+            logger.warning(f"[{task_id}] MinIO upload failed ({e}), storing in DB instead")
+            oss_url = f"/api/games/{game_id}/play-html"
 
         # ====== PHASE 4: FINALIZE ======
         await self._finalize(task_id, game_id, oss_url, html_code)
@@ -180,14 +184,14 @@ class GameGenerationHarness:
             from app.services import task_service, game_service
 
             async with async_session() as db:
-                # Update task
+                # Update task (store full HTML in llm_response_raw for no-MinIO fallback)
                 await task_service.update_task_progress(
                     db,
                     task_id,
                     progress=100,
                     status="completed",
                     result_oss_url=oss_url,
-                    llm_response_raw=html_code[:10000],  # Truncate for storage
+                    llm_response_raw=html_code[:50000],  # Store for direct serving
                 )
 
                 # Update game

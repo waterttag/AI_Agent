@@ -224,3 +224,27 @@ async def generate_game(
         threading.Thread(target=_run_in_thread, daemon=True).start()
 
     return TaskResponse.model_validate(task)
+
+
+# --- Play HTML (direct serve, no MinIO fallback) ---
+from fastapi.responses import HTMLResponse
+
+@router.get("/{game_id}/play-html", response_class=HTMLResponse)
+async def play_game_html(game_id: str, db: AsyncSession = Depends(get_db)):
+    """Serve the generated game HTML directly (no MinIO required)."""
+    from sqlalchemy import select
+    from app.models.task import GenerationTask
+
+    # Find the most recent completed task for this game
+    result = await db.execute(
+        select(GenerationTask)
+        .where(GenerationTask.game_id == game_id, GenerationTask.status == "completed")
+        .order_by(GenerationTask.completed_at.desc())
+        .limit(1)
+    )
+    task = result.scalar_one_or_none()
+
+    if not task or not task.llm_response_raw:
+        raise HTTPException(status_code=404, detail="No generated HTML found for this game")
+
+    return HTMLResponse(content=task.llm_response_raw)
