@@ -196,6 +196,55 @@ HTTP 200, Body: ok
 ✅ MinIO path-style + OSS/AWS virtual-hosted automatic detection  
 ✅ Degradation: no storage → DB fallback via `/api/games/{id}/play-html`
 
+### 1.18 Favorites (Toggle / Status / List)
+```bash
+# Toggle ON
+$ curl -X POST /api/games/{id}/favorite -H "Authorization: Bearer $TOKEN"
+{"favorited": true}
+# Check status + count
+$ curl /api/games/{id}/favorite -H "Authorization: Bearer $TOKEN"
+{"favorited": true, "count": 1}
+# My favorites
+$ curl /api/auth/me/favorites -H "Authorization: Bearer $TOKEN"
+["e0d5f1a1-6d43-4d00-9122-d432ae7d9667"]
+# Toggle OFF
+$ curl -X POST /api/games/{id}/favorite -H "Authorization: Bearer $TOKEN"
+{"favorited": false}
+```
+✅ Toggle in/out + count + my favorites list all working
+
+### 1.19 Play Count (increment=true)
+```bash
+$ curl /api/games/{id}?increment=true  # First load: play_count=0
+$ curl /api/games/{id}                 # Next: play_count=1
+```
+✅ Only increments when `?increment=true` is passed (called from Play page)
+
+### 1.20 Pagination
+```bash
+$ curl /api/games?page=1&size=2
+{"items": 2 items, "total": 3}
+$ curl /api/games?page=2&size=2
+{"items": 1 item, "total": 3}
+```
+✅ Page/size params working, Home page shows Prev/Next buttons
+
+### 1.21 Agent Execution Log
+```bash
+$ curl /api/tasks/games/{id}/log -H "Authorization: Bearer $TOKEN"
+{"task_id":"...","status":"completed","progress":100,
+ "prompt_summary":"Create a simple Pong...",
+ "agent_steps":["Preprocess: Context assembled..."]}
+```
+✅ Log API returns prompt summary + agent steps, displayed on Create page
+
+### 1.22 Version History
+```bash
+$ curl /api/tasks/games/{id} -H "Authorization: Bearer $TOKEN"
+[1 generation task]  # All past generation attempts for this game
+```
+✅ Author sees collapsible version history panel on Play page
+
 ---
 
 ## 二、手动验证 (截图描述)

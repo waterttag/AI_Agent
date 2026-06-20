@@ -87,6 +87,11 @@ game_assets
 ├── original_filename, oss_key, oss_url, file_size
 └── created_at
 
+game_favorites
+├── user_id (FK → users, composite PK)
+├── game_id (FK → games, composite PK)
+└── created_at
+
 generation_tasks
 ├── id (UUID PK)
 ├── game_id (FK → games), user_id (FK → users)
@@ -118,6 +123,10 @@ generation_tasks
 | Tasks | POST | /api/games/{id}/generate | 触发生成 [Auth] |
 | Tasks | GET | /api/tasks/{id} | 轮询状态 |
 | Tasks | GET | /api/tasks/games/{id} | 任务历史 |
+| Tasks | GET | /api/tasks/games/{id}/log | Agent 执行日志 |
+| Favorites | POST | /api/games/{id}/favorite | 收藏/取消 [Auth] |
+| Favorites | GET | /api/games/{id}/favorite | 收藏状态+总数 [Auth] |
+| Favorites | GET | /api/auth/me/favorites | 我的收藏 [Auth] |
 
 ## 4. Agent 编排
 

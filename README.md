@@ -6,10 +6,16 @@ An AI-powered web platform where **creators describe games in natural language**
 
 - **Tag Filtering** — Filter games by tag on the Home page
 - **Preview → Publish** — AI-generated games enter preview mode first; creators review and publish when ready
+- **⭐ Favorites** — Heart button on game cards; filter to show only favorited games
+- **Agent Execution Log** — After generation, see the AI's prompt and processing steps
+- **Version History** — Authors can view all past generation attempts per game
+- **Tag Filtering + Pagination** — Browse by tag, page through large collections
+- **Play Count Tracking** — Each game visit is recorded and displayed
 - **Auto-Seed** — Fresh deploys automatically populate with 3 example games
 - **Fullscreen Play** — Click fullscreen or press Escape to exit
 - **Multi-LLM Support** — Claude / OpenAI / DeepSeek (adapter pattern, swap via env var)
-- **No-MinIO Fallback** — Serves game HTML directly from the database when object storage is unavailable
+- **Multi-OSS Support** — Alibaba OSS / AWS S3 / MinIO / Cloudflare R2 via boto3
+- **No-Storage Fallback** — Serves game HTML directly from the database when object storage is unavailable
 
 ---
 
@@ -279,6 +285,12 @@ Full interactive docs at `http://localhost:8000/docs` (auto-generated OpenAPI).
 - `POST /api/games/{id}/generate` — Start AI generation `[Auth]`
 - `GET /api/tasks/{id}` — Poll generation status
 - `GET /api/tasks/games/{id}` — Task history
+- `GET /api/tasks/games/{id}/log` — Agent execution log `[Auth]`
+
+### Favorites
+- `POST /api/games/{id}/favorite` — Toggle favorite `[Auth]`
+- `GET /api/games/{id}/favorite` — Favorite status + count `[Auth]`
+- `GET /api/auth/me/favorites` — My favorite IDs `[Auth]`
 
 ---
 

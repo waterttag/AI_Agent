@@ -89,3 +89,6 @@
 | 次日 | 文档同步 | 全部文档更新至最终状态 |
 | 次日 | S3 迁移 | MinIO→boto3：支持阿里云OSS/AWS S3/Cloudflare R2/MinIO，自动检测虚拟主机/路径风格 |
 | 次日 | OSS 验证 | 阿里云OSS PUT→公网GET→DELETE全链路测试通过 |
+| 次日 | OSS preview 修复 | 修复 Content-Disposition attachment → inline，game_url 改用 play-html 端点 |
+| 次日 | 加分项补齐 | 分页翻页 + 播放统计 + Agent执行日志 + 版本历史 + 收藏功能 |
+| 次日 | 线上全测 | 9 项 API 测试全部通过（Health/Auth/Games/Tag/分页/播放/Favorites/日志/版本） |

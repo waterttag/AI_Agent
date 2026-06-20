@@ -15,16 +15,19 @@
 | 登录态保持 | ✅ | localStorage 持久化，刷新不丢失 |
 | OAuth 扩展 | ⚠️ | 代码预留 role 字段，API 层可扩展 | 
 
-### 2. Home (首页) — ✅ 95%
+### 2. Home (首页) — ✅ 100%
 | 功能 | 状态 | 说明 |
 |------|:---:|------|
 | 游戏卡片网格 | ✅ | 响应式 1/2/3/4列布局 |
-| 封面/标题/作者 | ✅ | 作者名从DB关联查询 |
+| 封面/标题/作者 | ✅ | 作者名从DB关联查询，封面渐变色匹配标签 |
 | 标签/发布时间 | ✅ | Badge组件 + 日期格式化 |
+| 播放次数 | ✅ | 卡片显示 play_count，自动累计 |
 | 后端数据驱动 | ✅ | 数据库分页查询，非前端硬编码 |
 | 3个示例游戏 | ✅ | Snake / Memory Match / Breakout |
-| 1个Create闭环 | ✅ | DeepSeek Pong (AI生成) |
-| 标签筛选 | ❌ | 未实现(2天内排期不够) |
+| 1个Create闭环 | ✅ | Space Shooter (AI生成) |
+| 标签筛选 | ✅ | Filter Bar + 点击卡片标签 |
+| 分页翻页 | ✅ | Prev/Next + 页码 |
+| 收藏 | ✅ | ❤️ 按钮 + Favorites 筛选 |
 
 ### 3. Play (游玩) — ✅ 100%
 | 功能 | 状态 | 说明 |
@@ -37,19 +40,19 @@
 | 全屏切换 | ✅ | Fullscreen按钮 |
 | 返回浏览入口 | ✅ | Back to Browse 按钮 |
 
-### 4. Create (创作) — ✅ 95%
+### 4. Create (创作) — ✅ 100%
 | 功能 | 状态 | 说明 |
 |------|:---:|------|
 | 文字创意输入 | ✅ | 多行文本框，10-10000字 |
-| 多模态素材上传 | ✅ | 拖拽/点击上传 image/audio |
+| 多模态素材上传 | ✅ | 拖拽/点击上传 image/audio → 阿里云 OSS |
 | 标签管理 | ✅ | 添加/删除，回车确认 |
-| AI 生成触发 | ✅ | POST generate → Celery入队 |
+| AI 生成触发 | ✅ | POST generate → Celery/内联线程 |
 | 任务状态轮询 | ✅ | 2s间隔，进度条 |
 | Agent 过程可视化 | ✅ | 4阶段Pipeline步骤展示 |
-| 成功后跳转Play | ✅ | "Play Now" 按钮 |
+| 成功后跳转Play | ✅ | "Preview & Publish" 按钮 |
 | 失败后重试 | ✅ | 错误信息 + "Try Again" |
-| 预览→编辑→发布 | ⚠️ | 当前生成完直接published，缺少预览中间态 |
-| Agent执行日志 | ⚠️ | DB存system_prompt/llm_response，前端未展示 |
+| 预览→发布 | ✅ | Preview → yellow banner → Publish Now |
+| Agent执行日志 | ✅ | 生成完成页展示 Prompt 摘要 + Pipeline 步骤 |
 
 ### 5. AI Agent Harness — ✅ 100%
 | 功能 | 状态 | 说明 |
@@ -91,13 +94,13 @@
 
 ## 三、如果再有1周
 
-1. **封面图上传+裁剪**：游戏创建时上传封面，MinIO存储
-2. ~~预览模式~~ ✅ 已完成：生成后先预览，创作者确认后再发布
-3. **WebSocket**：替换轮询，实时推送生成进度
-4. **Agent日志面板**：展示 system_prompt / llm_response 摘要
-5. **代码沙箱加强**：CSP header + 服务端渲染预检
-6. **CI/CD**：GitHub Actions 自动测试 + Docker镜像构建
-7. **生产部署**：Vercel(前端) + Fly.io(后端) + AWS S3(存储)
+1. **封面图上传+裁剪**：游戏创建时上传封面
+2. ~~预览模式~~ ✅ 已完成
+3. ~~WebSocket~~ → 当前轮询方案 MVP 够用
+4. ~~Agent日志面板~~ ✅ 已完成：生成完成后展示 Prompt + Pipeline 步骤
+5. ~~收藏功能~~ ✅ 已完成：❤️ 按钮 + Favorites 筛选
+6. **代码沙箱加强**：CSP header + 服务端渲染预检
+7. **CI/CD**：GitHub Actions 自动测试 + Docker镜像构建
 
 ---
 
