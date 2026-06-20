@@ -2,11 +2,12 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreateGame, useUploadAsset, useGenerateGame } from "@/hooks/useCreateGame";
 import { useTaskPolling } from "@/hooks/useTaskPolling";
+import { useTaskLog } from "@/hooks/useTaskLog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles, Upload, X, FileImage, Loader2, CheckCircle, XCircle, Play } from "lucide-react";
+import { Sparkles, Upload, X, FileImage, Loader2, CheckCircle, XCircle, Play, Terminal } from "lucide-react";
 
 export function CreatePage() {
   const navigate = useNavigate();
@@ -32,6 +33,8 @@ export function CreatePage() {
 
   // Poll task status
   const { data: task } = useTaskPolling(taskId);
+  // Agent log
+  const { data: taskLog } = useTaskLog(step === "done" ? gameId : null);
 
   const addTag = () => {
     const t = tagInput.trim().toLowerCase();
@@ -159,6 +162,25 @@ export function CreatePage() {
               <h2 className="text-xl font-semibold text-yellow-500">Game Ready for Preview</h2>
               <p className="text-muted-foreground mt-1">Review your game. Only you can see it until you publish.</p>
             </div>
+            {/* Agent Log */}
+            {taskLog && (
+              <div className="text-left bg-secondary/20 rounded-lg p-4 space-y-2 border border-border">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <Terminal className="h-4 w-4" /> Agent Execution Log
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  {taskLog.prompt_summary && (
+                    <p className="italic opacity-70">Prompt: "{taskLog.prompt_summary}..."</p>
+                  )}
+                  {taskLog.agent_steps.map((step: string, i: number) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="text-primary mt-0.5">▸</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex gap-4 justify-center">
               <Button onClick={() => navigate(`/play/${gameId}`)} size="lg">
                 <Play className="mr-2 h-4 w-4" /> Preview & Publish

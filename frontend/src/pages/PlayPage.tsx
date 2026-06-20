@@ -5,7 +5,8 @@ import { useAuthStore } from "@/lib/auth-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home, Send, Eye } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home, Send, Eye, History, ChevronDown, ChevronUp } from "lucide-react";
+import { useTasks } from "@/hooks/useTasks";
 import { useState, useEffect } from "react";
 
 export function PlayPage() {
@@ -18,6 +19,8 @@ export function PlayPage() {
   const user = useAuthStore((s) => s.user);
   const isAuthor = user && game && user.id === game.author_id;
   const isPreview = game?.status === "preview";
+  const [showHistory, setShowHistory] = useState(false);
+  const { data: tasks } = useTasks(isAuthor ? gameId! : null);
 
   // Listen for Escape to exit fullscreen
   useEffect(() => {
@@ -179,6 +182,45 @@ export function PlayPage() {
             <div className="p-4 rounded-lg bg-secondary/30 border border-border">
               <h3 className="text-sm font-medium text-muted-foreground mb-1">Generation Prompt</h3>
               <p className="text-sm italic">"{game.prompt_text}"</p>
+            </div>
+          )}
+
+          {/* Version History — for author only */}
+          {isAuthor && tasks && tasks.length > 0 && (
+            <div className="rounded-lg border border-border">
+              <button
+                className="w-full flex items-center justify-between p-4 text-sm font-medium hover:bg-secondary/20 transition-colors"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                <span className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
+                  Version History ({tasks.length})
+                </span>
+                {showHistory ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {showHistory && (
+                <div className="px-4 pb-4 space-y-2">
+                  {tasks.map((t: any, i: number) => (
+                    <div key={t.id} className="flex items-center justify-between text-xs py-2 border-t border-border first:border-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          t.status === "completed" ? "bg-green-500/20 text-green-400" :
+                          t.status === "failed" ? "bg-red-500/20 text-red-400" :
+                          "bg-secondary text-muted-foreground"
+                        }`}>
+                          {t.status}
+                        </span>
+                        <span className="text-muted-foreground">
+                          {new Date(t.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="text-muted-foreground">
+                        {t.progress}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

@@ -2,11 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import apiClient from "@/lib/api-client";
 import type { GameListResponse, Game, GameAsset } from "@/types";
 
-export function useGames(tag?: string) {
+export function useGames(page: number = 1, tag?: string, size: number = 12) {
   return useQuery({
-    queryKey: ["games", tag],
+    queryKey: ["games", page, tag, size],
     queryFn: async () => {
-      const params: Record<string, string> = { status: "published", size: "50" };
+      const params: Record<string, string> = { status: "published", page: String(page), size: String(size) };
       if (tag) params.tag = tag;
       const res = await apiClient.get<GameListResponse>("/games", { params });
       return res.data;

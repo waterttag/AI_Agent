@@ -57,6 +57,9 @@ async def get_game(game_id: str, db: AsyncSession = Depends(get_db)):
     resp = GameResponse.model_validate(game)
     if game.author:
         resp.author_name = game.author.username
+    # Increment play count
+    game.play_count = (game.play_count or 0) + 1
+    await db.commit()
     return resp
 
 

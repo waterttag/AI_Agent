@@ -4,8 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Gamepad2, Sparkles, ArrowRight, Play, User, Clock, Loader2 } from "lucide-react";
+import { Gamepad2, Sparkles, ArrowRight, Play, User, Clock, Loader2, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { useState, useMemo } from "react";
+import apiClient from "@/lib/api-client";
 
 // Tag → gradient map for cover images
 const COVER_GRADIENTS: Record<string, string> = {
@@ -60,7 +61,10 @@ function GameCard({ game, onTagClick }: { game: any; onTagClick?: (tag: string) 
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
           <span className="flex items-center gap-1"><User className="h-3 w-3" /> {game.author_name || "Author"}</span>
-          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(game.created_at)}</span>
+          <span className="flex items-center gap-2">
+            <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {game.play_count || 0}</span>
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatDate(game.created_at)}</span>
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -69,7 +73,9 @@ function GameCard({ game, onTagClick }: { game: any; onTagClick?: (tag: string) 
 
 export function HomePage() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const { data, isLoading, error } = useGames(activeTag || undefined);
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
+  const { data, isLoading, error } = useGames(page, activeTag || undefined);
   const navigate = useNavigate();
 
   // Collect all tags from games
@@ -159,6 +165,20 @@ export function HomePage() {
             {data.items.map((game: any) => (
               <GameCard key={game.id} game={game} onTagClick={(t) => setActiveTag(t)} />
             ))}
+          </div>
+        )}
+        {/* Pagination */}
+        {data && data.total > pageSize && (
+          <div className="flex items-center justify-center gap-4 pt-4">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="mr-1 h-4 w-4" /> Prev
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {Math.ceil(data.total / pageSize)}
+            </span>
+            <Button variant="outline" size="sm" disabled={page * pageSize >= data.total} onClick={() => setPage(page + 1)}>
+              Next <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
           </div>
         )}
       </section>
