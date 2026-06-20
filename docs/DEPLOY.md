@@ -105,36 +105,22 @@
 
 ---
 
-## 第五步：运行种子数据
+## 第五步：种子数据（自动）
 
-在 Render 的 aigame-backend 服务中：
-1. 点击 **Shell** 标签
-2. 运行：
-   ```bash
-   cd /opt/render/project/src/backend
-   export DATABASE_URL=<你的PostgreSQL URL>
-   export MINIO_ENDPOINT=<你的R2 endpoint>
-   export MINIO_ACCESS_KEY=<...>
-   export MINIO_SECRET_KEY=<...>
-   export MINIO_BUCKET=ai-game-platform
-   export MINIO_SECURE=true
-   python /opt/render/project/src/seed/seed.py
-   ```
+后端启动时自动检测——如果数据库中没有游戏，会自动创建 demo 账号并注入 3 款种子游戏。**无需手动操作。**
 
-**但是** seed 脚本依赖 `backend/app/` 路径，在 Render 上路径不同。更好的办法是：
-
-在 Render Shell 中：
+如需重新种子数据，调用 API：
 ```bash
-python -c "
-import sys; sys.path.insert(0, '/opt/render/project/src/backend')
-sys.path.insert(0, '/opt/render/project/src')
-import asyncio
-from seed.seed import main
-asyncio.run(main())
-"
-```
+# 注册 demo 用户
+curl -X POST https://YOUR_URL/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"democreator","email":"demo@aigame.dev","password":"demo123"}'
 
-或者更简单——直接在 Render 上通过 API 注册+创建游戏。
+# 注入种子游戏
+curl -X POST https://YOUR_URL/api/admin/inject-game \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Classic Snake","description":"...","tags":["arcade","classic","snake"],"html_content":"<!DOCTYPE html>...","author_username":"democreator"}'
+```
 
 ---
 

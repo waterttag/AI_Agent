@@ -77,3 +77,13 @@
 | 23:00 | DeepSeek | 适配器集成, API Key配置 |
 | 23:04 | 生成验证 | DeepSeek成功生成Pong游戏(23s) |
 | 23:10 | 补齐 | 作者名/Play状态/Agent可视化/文档 |
+| 次日 | Git & 推送 | 7次commit + GitHub仓库 |
+| 次日 | Railway部署 | Dockerfile + 根目录部署 + $PORT适配 |
+| 次日 | 前端空状态 | 修复TS类型错误 (TS2367) |
+| 次日 | 全栈部署 | Railway DOCKERFILE builder + shell CMD |
+| 次日 | 前端路径修复 | Docker本地路径 vs 生产路径 |
+| 次日 | 无MinIO回退 | play-html直接服务 + 上传失败跳过 |
+| 次日 | 全屏修复 | Escape键退出 + 遮罩退出按钮 |
+| 次日 | 自动种子 | 后端启动时检测空DB自动注入 |
+| 次日 | 加分项 | 标签筛选 + Preview→Publish + 渐变封面 |
+| 次日 | 文档同步 | 全部文档更新至最终状态 |

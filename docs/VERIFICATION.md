@@ -152,6 +152,40 @@ $ curl -X POST http://localhost:8009/api/games/$GAME_ID/generate \
 
 ---
 
+### 1.14 Tag Filtering
+```bash
+$ curl http://localhost:8009/api/games?tag=arcade
+{"total": 2, "items": [...]}   # Snake + Breakout
+
+$ curl http://localhost:8009/api/games?tag=puzzle
+{"total": 1, "items": [...]}   # Memory Match
+```
+✅ Tag filtering works cross-database (SQLite + PostgreSQL)
+
+### 1.15 Preview & Publish Flow
+```bash
+# After AI generation, game enters preview
+$ curl GET /api/games/{id}
+{"status": "preview", "game_url": "/api/games/{id}/play-html"}
+# Only visible to author; not in public listing
+
+# Author clicks Publish
+$ curl -X PUT /api/games/{id} -d '{"status":"published"}'
+{"status": "published"}
+# Now visible in public listing
+```
+✅ Preview → Publish flow complete
+
+### 1.16 Auto-Seed on Deploy
+```bash
+# After fresh deploy (no DB), health check shows games exist immediately
+$ curl https://aiagent-production-5b68.up.railway.app/api/games
+{"total": 3, ...}   # Snake, Memory, Breakout auto-populated
+```
+✅ Deploy survives restarts — auto-seed fires on startup
+
+---
+
 ## 二、手动验证 (截图描述)
 
 ### 2.1 Home 页面
@@ -248,5 +282,6 @@ API返回503 "Set LLM_PROVIDER and LLM_API_KEY to enable" →
 ---
 
 **验证日期**: 2026-06-19 ~ 2026-06-20
-**验证环境**: Windows 11, Docker Desktop, Python 3.13, Node.js 20
+**验证环境**: Windows 11, Docker Desktop, Python 3.13, Node.js 20, Railway (prod)
 **LLM**: DeepSeek-chat (api.deepseek.com)
+**版本**: 10 commits, tested on local + Railway production

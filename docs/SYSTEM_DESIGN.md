@@ -75,7 +75,7 @@ games
 ├── game_url (VARCHAR 500, OSS URL → playable HTML)
 ├── author_id (FK → users)
 ├── tags (JSONB: ["puzzle","arcade"])
-├── status (VARCHAR 20: draft | generating | published | failed)
+├── status (VARCHAR 20: draft | generating | preview | published | failed)
 ├── prompt_text (TEXT)
 ├── play_count (INTEGER)
 └── created_at, updated_at

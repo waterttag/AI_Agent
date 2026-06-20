@@ -1,5 +1,9 @@
 # 完成度说明 — AIAgent全栈工程师测试
 
+**Demo**: https://aiagent-production-5b68.up.railway.app  
+**GitHub**: github.com/waterttag/AI_Agent (10 commits)  
+**测试账号**: demo@aigame.dev / demo123
+
 ## 一、已完成功能
 
 ### 1. Auth (登录注册) — ✅ 100%
@@ -74,20 +78,19 @@
 
 | 项目 | 优先级 | 说明 |
 |------|:---:|------|
-| 游戏卡片封面图 | 中 | 当前显示渐变色占位，需上传封面功能 |
-| 标签筛选 | 低 | API已支持 ?tag=，前端未接 |
-| 预览→编辑→发布 | 中 | 当前生成完直接published |
-| OAuth 登录 | 低 | 文档说demo阶段可不实现 |
-| WebSocket进度推送 | 低 | 当前轮询，换WS只需改一处 |
-| 游戏版本管理 | 低 | 可基于 generation_tasks 历史扩展 |
-| 播放次数统计 | 低 | play_count字段已建，API未+1 |
+| 游戏卡片封面图 | ✅ | 渐变色自动匹配标签 |
+| 标签筛选 | ✅ | API + 前端 Filter Bar |
+| 预览→编辑→发布 | ✅ | Preview 状态 + Publish 按钮 |
+| OAuth 登录 | ⏸️ | 文档说demo阶段可不实现 |
+| WebSocket进度推送 | 低 | 当前轮询 |
+| 游戏版本管理 | 低 | generation_tasks 历史 |
 
 ---
 
 ## 三、如果再有1周
 
 1. **封面图上传+裁剪**：游戏创建时上传封面，MinIO存储
-2. **预览模式**：生成后先在沙箱预览，创作者确认后再发布
+2. ~~预览模式~~ ✅ 已完成：生成后先预览，创作者确认后再发布
 3. **WebSocket**：替换轮询，实时推送生成进度
 4. **Agent日志面板**：展示 system_prompt / llm_response 摘要
 5. **代码沙箱加强**：CSP header + 服务端渲染预检

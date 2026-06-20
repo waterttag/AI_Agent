@@ -2,6 +2,15 @@
 
 An AI-powered web platform where **creators describe games in natural language** and **players discover & play** community-generated interactive games. Built as a full-stack MVP with an extensible **AI Agent Harness** architecture.
 
+## ✨ Features
+
+- **Tag Filtering** — Filter games by tag on the Home page
+- **Preview → Publish** — AI-generated games enter preview mode first; creators review and publish when ready
+- **Auto-Seed** — Fresh deploys automatically populate with 3 example games
+- **Fullscreen Play** — Click fullscreen or press Escape to exit
+- **Multi-LLM Support** — Claude / OpenAI / DeepSeek (adapter pattern, swap via env var)
+- **No-MinIO Fallback** — Serves game HTML directly from the database when object storage is unavailable
+
 ---
 
 ## 🏗️ Architecture
