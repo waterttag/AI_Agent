@@ -1,21 +1,50 @@
 # 部署指南 — AI Game Forge
 
-## 推荐方案：Render (后端) + Vercel (前端) + Cloudflare R2 (对象存储)
+## 当前生产部署: Railway
 
-全免费额度，无需信用卡即可开始。
+**Demo**: https://aiagent-production-5b68.up.railway.app  
+**对象存储**: 阿里云 OSS（`oss-cn-hangzhou.aliyuncs.com`，bucket: `agent-nju`）
 
 ---
 
-## 第一步：准备对象存储 (Cloudflare R2)
+## 对象存储配置
 
-1. 打开 https://dash.cloudflare.com → 注册/登录
-2. 左侧菜单 → **R2** → **Create bucket**
-   - Bucket name: `ai-game-platform`
-3. 进入 bucket → **Settings** → **Public access** → 允许 `public read`
-4. 创建 API Token：右侧 **Manage R2 API Tokens** → **Create API Token**
-   - Permission: `Object Read & Write`
-   - 记下: **Access Key ID** 和 **Secret Access Key**
-   - Endpoint: `https://<account-id>.r2.cloudflarestorage.com`
+系统使用 boto3 S3 客户端，兼容以下存储服务：
+
+| 服务 | Endpoint 格式 | 推荐 |
+|------|--------------|:---:|
+| **阿里云 OSS** | `oss-cn-hangzhou.aliyuncs.com` | ✅ 当前使用 |
+| **AWS S3** | `s3.amazonaws.com` | ✅ |
+| **Cloudflare R2** | `<id>.r2.cloudflarestorage.com` | ✅ 免费 |
+| **MinIO** | `localhost:9000` | ✅ 本地开发 |
+
+### 配置环境变量
+
+无论用哪个服务，只需改 5 个变量（系统自动适配 virtual-hosted / path 风格）：
+
+| Key | Value 示例 |
+|-----|-----------|
+| `MINIO_ENDPOINT` | `oss-cn-hangzhou.aliyuncs.com` |
+| `MINIO_ACCESS_KEY` | `LTAI5t7xxxxxx` |
+| `MINIO_SECRET_KEY` | `xxxxxx` |
+| `MINIO_BUCKET` | `agent-nju` |
+| `MINIO_SECURE` | `true`（HTTPS）或 `false`（HTTP） |
+
+### 创建 OSS Bucket (阿里云)
+
+1. 打开 https://oss.console.aliyun.com
+2. **Bucket 列表** → **创建 Bucket**
+3. Bucket 名称 + 地域选择 + **读写权限：公共读**
+4. 右上角头像 → **AccessKey 管理** → 获取 Key
+
+### 创建 R2 Bucket (Cloudflare，免费)
+
+1. 打开 https://dash.cloudflare.com → R2 → Create bucket
+2. Bucket name: `ai-game-platform`
+3. Settings → Public Access → 开启
+4. R2 API Tokens → Object Read & Write → 获取 Key
+
+### 创建 S3 Bucket (AWS)
 
 ---
 

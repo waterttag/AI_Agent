@@ -135,7 +135,7 @@ LLMAdapter (ABC)
 1. **Preprocess**: 加载素材→Vision API描述→组装上下文
 2. **Generate**: 选择适配器→构建System Prompt→调用LLM→收集HTML
 3. **Validate & Fix**: 解析HTML→检查game loop→安全检查→失败自动修复
-4. **Package & Deploy**: 单文件打包→上传MinIO→更新状态为published
+4. **Package & Deploy**: 单文件打包→上传到 S3 兼容对象存储（阿里云 OSS / AWS S3 / MinIO / Cloudflare R2）→更新状态为 preview
 
 ### System Prompt 设计
 - 要求输出自包含HTML5游戏(Phaser.js CDN 或 Canvas API)
@@ -149,12 +149,14 @@ LLMAdapter (ABC)
 - **Bundle**: 单文件 `.html` (CSS内联`<style>` + JS内联`<script>` + CDN引用)
 - **存储路径**: `games/{game_uuid}/index.html`
 - **素材路径**: `games/{game_uuid}/assets/{asset_uuid}.{ext}`
-- **访问方式**: MinIO public-read bucket，HTTP直接获取
+- **访问方式**: Bucket public-read ACL，HTTP 直接获取
+- **URL 格式**: OSS/AWS S3 虚拟主机风格 `https://{bucket}.{endpoint}/{key}`；MinIO 路径风格 `http://{endpoint}/{bucket}/{key}`（自动检测）
 
 ### Play 页加载流程
-1. 前端 GET `/api/games/{id}` → 获取 `game_url` (MinIO HTTP地址)
+1. 前端 GET `/api/games/{id}` → 获取 `game_url`（OSS/S3/MinIO HTTP 地址）
 2. `<iframe sandbox="allow-scripts allow-same-origin" src={game_url}>` 
-3. MinIO 配置 CORS + public-read bucket policy
+3. Bucket 配置 public-read ACL + CORS（OSS 控制台可配）
+4. 无对象存储时自动降级：HTML 存入 `generation_tasks` 表，通过 `/api/games/{id}/play-html` 直接服务
 
 ## 6. 安全策略
 

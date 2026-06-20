@@ -66,7 +66,9 @@
 ### 6. 对象存储 — ✅ 100%
 | 功能 | 状态 | 说明 |
 |------|:---:|------|
-| MinIO 集成 | ✅ | Docker容器, S3兼容 |
+| S3 多服务支持 | ✅ | boto3：阿里云OSS / AWS S3 / MinIO / Cloudflare R2 |
+| 自动适配 | ✅ | OSS/AWS虚拟主机风格，MinIO路径风格自动检测 |
+| 无存储降级 | ✅ | DB存储HTML，`/api/games/{id}/play-html` 直接服务 |
 | 游戏文件存储 | ✅ | games/{id}/index.html |
 | 素材文件存储 | ✅ | games/{id}/assets/* |
 | Public Read | ✅ | Bucket policy |

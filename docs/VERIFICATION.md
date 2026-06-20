@@ -184,6 +184,18 @@ $ curl https://aiagent-production-5b68.up.railway.app/api/games
 ```
 ✅ Deploy survives restarts — auto-seed fires on startup
 
+### 1.17 S3 Object Storage (Alibaba OSS / AWS S3 / MinIO / R2)
+```bash
+# PUT test file via boto3 S3 client (OSS virtual-hosted style)
+$ python -c "client.put_object(Bucket='agent-nju', Key='test.txt', Body=b'ok', ACL='public-read')"
+# GET via public URL
+$ curl https://agent-nju.oss-cn-hangzhou.aliyuncs.com/test.txt
+HTTP 200, Body: ok
+```
+✅ Alibaba OSS full cycle (PUT → public GET → DELETE) verified  
+✅ MinIO path-style + OSS/AWS virtual-hosted automatic detection  
+✅ Degradation: no storage → DB fallback via `/api/games/{id}/play-html`
+
 ---
 
 ## 二、手动验证 (截图描述)

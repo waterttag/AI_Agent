@@ -87,3 +87,5 @@
 | 次日 | 自动种子 | 后端启动时检测空DB自动注入 |
 | 次日 | 加分项 | 标签筛选 + Preview→Publish + 渐变封面 |
 | 次日 | 文档同步 | 全部文档更新至最终状态 |
+| 次日 | S3 迁移 | MinIO→boto3：支持阿里云OSS/AWS S3/Cloudflare R2/MinIO，自动检测虚拟主机/路径风格 |
+| 次日 | OSS 验证 | 阿里云OSS PUT→公网GET→DELETE全链路测试通过 |

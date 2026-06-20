@@ -40,9 +40,9 @@ An AI-powered web platform where **creators describe games in natural language**
        │              │                  │
        ▼              ▼                  ▼
 ┌──────────┐  ┌──────────┐     ┌──────────────┐
-│ SQLite   │  │  Redis   │     │    MinIO      │
-│ (Dev)    │  │ (Celery  │     │  (S3 Object   │
-│ → PG     │  │  Broker) │     │   Storage)    │
+│ SQLite   │  │  Redis   │     │    OSS / S3    │
+│ (Dev)    │  │ (Celery  │     │  (Object Store) │
+│ → PG     │  │  Broker) │     │  boto3 client   │
 └──────────┘  └──────────┘     └──────────────┘
 ```
 
@@ -50,8 +50,8 @@ An AI-powered web platform where **creators describe games in natural language**
 | Decision | Rationale |
 |----------|-----------|
 | **Celery + Redis** (not FastAPI BackgroundTasks) | LLM calls take 30-120s; Celery runs in separate process, never blocks API |
-| **Single HTML bundle** per game | One file in MinIO = one HTTP request. Inlines CDN scripts, assets as data URIs |
-| **MinIO** (not local files) | S3-compatible Docker container; swap endpoint to migrate to AWS S3 in production |
+| **Single HTML bundle** per game | One file in OSS = one HTTP request. Inlines CDN scripts, assets as data URIs |
+| **boto3 S3** (Alibaba OSS / AWS S3 / MinIO / R2) | Single client, auto-detect virtual-hosted vs path-style; swap endpoint to migrate between providers |
 | **SQLite → PostgreSQL** | Same SQLAlchemy ORM; change `DATABASE_URL` to switch |
 | **Adapter pattern** for LLMs | `LLM_PROVIDER=claude\|openai` env var switches the AI backend; add new models by implementing `LLMAdapter` ABC |
 | **Polling** (not WebSocket) for task progress | TanStack Query `refetchInterval: 2000` = one line; upgrade to WebSocket is a single route change |
@@ -61,7 +61,7 @@ An AI-powered web platform where **creators describe games in natural language**
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Docker Desktop** (for MinIO + Redis)
+- **Docker Desktop** (for Redis; MinIO optional) 或云端 OSS
 - **Python 3.11+**
 - **Node.js 20+**
 
@@ -78,7 +78,7 @@ cp .env.example .env
 ### 2. Start Infrastructure
 ```bash
 docker compose up -d
-# Starts: MinIO (port 9000,9001) + Redis (port 6380)
+# Starts: Redis (port 6380) + MinIO (port 9000,9001, 本地开发可选)
 ```
 
 ### 3. Install Dependencies
@@ -312,7 +312,7 @@ User Prompt → Preprocess Assets → Build Context → LLM Generate →
 - Validator blocks `eval()` usage in generated code
 - External script sources restricted to approved CDNs
 - JWT-based authentication with bcrypt password hashing
-- MinIO bucket policy: public-read on `games/*`, write requires server credential
+- OSS/S3 bucket: public-read on `games/*`, write requires server credential
 
 ---
 
