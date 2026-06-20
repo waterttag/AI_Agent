@@ -11,8 +11,15 @@ import asyncio
 import sys
 import os
 
-# Add backend to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+# Add backend to path — handles both local and Docker paths
+if os.path.exists("/app/app"):
+    # Docker: backend code is at /app/
+    sys.path.insert(0, "/app")
+    SEED_DIR = "/"
+else:
+    # Local dev
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
+    SEED_DIR = os.path.dirname(__file__)
 
 from app.database import async_session, engine, Base
 from app.models import User, Game
@@ -21,7 +28,7 @@ from app.utils.minio_client import get_minio_client, ensure_bucket
 from app.config import settings
 from minio import Minio
 
-SEED_DIR = os.path.dirname(__file__)
+# SEED_DIR defined above (handles Docker vs local)
 
 SEED_GAMES = [
     {

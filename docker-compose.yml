@@ -1,4 +1,5 @@
 services:
+  # --- Infrastructure ---
   redis:
     image: redis:7-alpine
     container_name: aigame-redis
@@ -18,8 +19,8 @@ services:
     container_name: aigame-minio
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000" # API
-      - "9001:9001" # Console
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -32,6 +33,96 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # --- Backend API ---
+  backend:
+    build: ./backend
+    container_name: aigame-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/app.db
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=ai-game-platform
+      - MINIO_SECURE=false
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRE_MINUTES=1440
+      - LLM_PROVIDER=${LLM_PROVIDER:-none}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+    volumes:
+      - backend_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Celery Worker (AI Generation) ---
+  worker:
+    build: ./backend
+    container_name: aigame-worker
+    command: celery -A app.celery_app worker --loglevel=info --pool=solo
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/app.db
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=ai-game-platform
+      - MINIO_SECURE=false
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - LLM_PROVIDER=${LLM_PROVIDER:-none}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+    volumes:
+      - backend_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Frontend ---
+  frontend:
+    build: ./frontend
+    container_name: aigame-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # --- Seed (one-shot) ---
+  seed:
+    build: ./backend
+    container_name: aigame-seed
+    command: python /seed.py
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///data/app.db
+      - REDIS_URL=redis://redis:6379/0
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=ai-game-platform
+      - MINIO_SECURE=false
+    volumes:
+      - ./seed/seed.py:/seed.py
+      - ./seed/games:/games
+      - backend_data:/data
+    depends_on:
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   redis_data:
   minio_data:
+  backend_data:
