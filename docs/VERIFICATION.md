@@ -247,7 +247,7 @@ $ curl /api/tasks/games/{id} -H "Authorization: Bearer $TOKEN"
 
 ---
 
-## 二、手动验证 (截图描述)
+## 二、手动验证 
 
 ### 2.1 Home 页面
 - URL: http://localhost:5174

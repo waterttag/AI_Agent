@@ -233,7 +233,7 @@ def build():
         ["7","技术栈","✅","README 完整列出选型及理由"],
         ["8","完成度说明","✅","docs/COMPLETION_REPORT.md 含已完成/未完成/改进计划"],
         ["9","功能验证证明","✅","docs/VERIFICATION.md — 22 项 API 测试全通过"],
-        ["10","演示视频","⏸️","录制脚本已备好 (docs/DEMO_SCRIPT.md)"],
+        ["10","演示视频","✅","https://www.bilibili.com/video/BV1eqjn6xEp3/ (5分钟，登录→Create→生成→Home→Play)"],
         ["11","AI 协同记录","✅","docs/AI_COLLAB_LOG.md 含工具/策略/占比/日志"],
     ],[0.8,2.5,1,9.5])
 
@@ -291,7 +291,7 @@ def build():
         ["资源限额","✅","max_tokens + solo pool"],
     ],[3,1.5,9.5])
     _h(doc,"未完成",2)
-    _p(doc,"• OAuth 第三方登录：文档注明 demo 阶段可不实现，role 字段已预留\n• 演示视频：录制脚本已备好\n• WebSocket 推送：当前轮询方案 MVP 够用，升级只需改一处")
+    _p(doc,"• OAuth 第三方登录：文档注明 demo 阶段可不实现，role 字段已预留\n• WebSocket 推送：当前轮询方案 MVP 够用，升级只需改一处")
 
     # ── 14 ──
     _h(doc,"十四、AI 协同记录")

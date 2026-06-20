@@ -1,7 +1,8 @@
 # 完成度说明 — AIAgent全栈工程师测试
 
 **Demo**: https://aiagent-production-5b68.up.railway.app  
-**GitHub**: github.com/waterttag/AI_Agent (10 commits)  
+**GitHub**: github.com/waterttag/AI_Agent (16 commits)  
+**演示视频**: https://www.bilibili.com/video/BV1eqjn6xEp3/  
 **测试账号**: demo@aigame.dev / demo123
 
 ## 一、已完成功能
