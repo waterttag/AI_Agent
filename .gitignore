@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build output
+dist/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Database
+*.db
+*.sqlite3
+
+# MinIO data
+minio_data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+celerybeat-schedule*
+
+# Coverage
+htmlcov/
+.coverage
