@@ -81,10 +81,7 @@ export function CreatePage() {
 
   // Handle task completion
   if (task?.status === "completed" && step === "generating") {
-    // The task completed, move to done
-    if (step !== "done") {
-      setStep("done");
-    }
+    setStep("done");
   }
   if (task?.status === "failed" && step === "generating") {
     setErrorMsg(task.error_message || "Generation failed");
