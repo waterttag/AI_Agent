@@ -13,8 +13,13 @@ from app.database import engine, Base
 from app.utils.minio_client import ensure_bucket
 from app.api import api_router
 
-# Locate frontend build directory
-_FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+# Locate frontend build directory — handles local dev and Docker paths
+_BASE = Path(__file__).resolve().parent.parent.parent  # project root
+_FRONTEND_DIST = _BASE / "frontend" / "dist"
+# In Docker, the backend lives at /app/ (one level up is project root)
+if not (_FRONTEND_DIST / "index.html").exists():
+    _DOCKER_BASE = Path(__file__).resolve().parent.parent  # /app (Docker WORKDIR)
+    _FRONTEND_DIST = _DOCKER_BASE / "frontend" / "dist"
 
 
 @asynccontextmanager
