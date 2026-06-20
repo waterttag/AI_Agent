@@ -65,9 +65,14 @@ export function CreatePage() {
       const game = await createGame.mutateAsync({ title, description, tags, prompt_text: promptText });
       setGameId(game.id);
 
-      // 2. Upload assets
+      // 2. Upload assets (non-blocking — skip on failure)
       for (const file of files) {
-        await uploadAsset.mutateAsync({ gameId: game.id, file });
+        try {
+          await uploadAsset.mutateAsync({ gameId: game.id, file });
+        } catch {
+          // Asset upload failed (e.g. no MinIO) — skip and continue with generation
+          console.warn(`Skipping upload for ${file.name}: storage unavailable`);
+        }
       }
 
       // 3. Trigger generation
