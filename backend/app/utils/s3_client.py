@@ -16,6 +16,9 @@ def get_s3_endpoint_url() -> str:
 def get_s3_client():
     """Return a boto3 S3 client configured for the given endpoint."""
     endpoint_url = get_s3_endpoint_url()
+    # Alibaba OSS / AWS S3 use virtual-hosted style (bucket.endpoint)
+    # MinIO uses path style (endpoint/bucket)
+    is_oss = "aliyuncs.com" in settings.minio_endpoint
     return boto3.client(
         "s3",
         endpoint_url=endpoint_url,
@@ -23,9 +26,9 @@ def get_s3_client():
         aws_secret_access_key=settings.minio_secret_key,
         config=BotoConfig(
             signature_version="s3v4",
-            s3={"addressing_style": "path"},  # path-style for MinIO/OSS compatibility
+            s3={"addressing_style": "virtual" if is_oss else "path"},
         ),
-        region_name="us-east-1",  # Required but ignored by most S3-compatible services
+        region_name="oss-cn-hangzhou" if is_oss else "us-east-1",
     )
 
 

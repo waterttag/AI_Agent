@@ -9,6 +9,18 @@ from app.config import settings
 from app.utils.s3_client import get_s3_client
 
 
+def _build_public_url(oss_key: str) -> str:
+    """Build a public URL for the given object key."""
+    bucket = settings.minio_bucket
+    endpoint = settings.minio_endpoint
+    scheme = "https" if settings.minio_secure else "http"
+    # Alibaba OSS / AWS S3: virtual-hosted style
+    if "aliyuncs.com" in endpoint or "amazonaws.com" in endpoint:
+        return f"{scheme}://{bucket}.{endpoint}/{oss_key}"
+    # MinIO / local / others: path style
+    return f"{scheme}://{endpoint}/{bucket}/{oss_key}"
+
+
 async def upload_file(file: UploadFile, game_id: str, folder: str = "assets") -> tuple[str, str]:
     """Upload a file to object storage. Returns (oss_key, oss_url)."""
     client = get_s3_client()
@@ -31,7 +43,7 @@ async def upload_file(file: UploadFile, game_id: str, folder: str = "assets") ->
 
     endpoint = settings.minio_endpoint
     scheme = "https" if settings.minio_secure else "http"
-    oss_url = f"{scheme}://{endpoint}/{bucket}/{oss_key}"
+    oss_url = _build_public_url(oss_key)
 
     return oss_key, oss_url
 
@@ -52,8 +64,7 @@ async def upload_html(game_id: str, html_content: str) -> str:
         ACL="public-read",
     )
 
-    scheme = "https" if settings.minio_secure else "http"
-    return f"{scheme}://{settings.minio_endpoint}/{bucket}/{oss_key}"
+    return _build_public_url(oss_key)
 
 
 async def delete_file(oss_key: str) -> None:
