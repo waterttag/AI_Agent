@@ -42,11 +42,16 @@ async def list_games(
     page: int = 1,
     size: int = 12,
 ) -> GameListResponse:
-    """List games with optional filters, paginated."""
+    """List games with optional filters, paginated. Default shows published + preview."""
     base_query = select(Game)
 
     if status:
-        base_query = base_query.where(Game.status == status)
+        if status == "listed":
+            base_query = base_query.where(Game.status.in_(["published", "preview"]))
+        else:
+            base_query = base_query.where(Game.status == status)
+    else:
+        base_query = base_query.where(Game.status.in_(["published", "preview"]))
 
     if tag:
         base_query = base_query.where(Game.tags.contains([tag]))

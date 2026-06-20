@@ -5,16 +5,40 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import { Gamepad2, Sparkles, ArrowRight, Play, User, Clock, Loader2 } from "lucide-react";
+import { useState, useMemo } from "react";
 
-function GameCard({ game }: { game: any }) {
+// Tag → gradient map for cover images
+const COVER_GRADIENTS: Record<string, string> = {
+  arcade: "from-pink-500/30 via-orange-500/20 to-yellow-500/30",
+  puzzle: "from-blue-500/30 via-purple-500/20 to-indigo-500/30",
+  classic: "from-emerald-500/30 via-teal-500/20 to-green-500/30",
+  action: "from-red-500/30 via-rose-500/20 to-orange-500/30",
+  shooter: "from-red-500/40 via-yellow-500/20 to-gray-500/30",
+  memory: "from-violet-500/30 via-fuchsia-500/20 to-pink-500/30",
+  casual: "from-cyan-500/30 via-sky-500/20 to-blue-500/30",
+  snake: "from-lime-500/30 via-green-500/20 to-emerald-500/30",
+  breakout: "from-orange-500/30 via-red-500/20 to-rose-500/30",
+  default: "from-primary/20 via-secondary/20 to-accent/20",
+};
+
+function gameCoverGradient(tags: string[]): string {
+  for (const t of tags) {
+    if (COVER_GRADIENTS[t]) return COVER_GRADIENTS[t];
+  }
+  return COVER_GRADIENTS.default;
+}
+
+function GameCard({ game, onTagClick }: { game: any; onTagClick?: (tag: string) => void }) {
   const navigate = useNavigate();
+  const grad = gameCoverGradient(game.tags || []);
+
   return (
     <Card
       className="group cursor-pointer overflow-hidden border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10"
       onClick={() => navigate(`/play/${game.id}`)}
     >
-      <div className="aspect-video bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/20 flex items-center justify-center relative overflow-hidden">
-        <Gamepad2 className="h-16 w-16 text-primary/40 group-hover:scale-110 transition-transform duration-300" />
+      <div className={`aspect-video bg-gradient-to-br ${grad} flex items-center justify-center relative overflow-hidden`}>
+        <Gamepad2 className="h-16 w-16 text-white/30 group-hover:scale-110 transition-transform duration-300" />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
           <Play className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 drop-shadow-lg" />
         </div>
@@ -23,8 +47,15 @@ function GameCard({ game }: { game: any }) {
         <h3 className="font-semibold text-lg truncate">{game.title}</h3>
         <p className="text-sm text-muted-foreground line-clamp-2">{game.description}</p>
         <div className="flex flex-wrap gap-1.5">
-          {(game.tags || []).slice(0, 3).map((t: string) => (
-            <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+          {(game.tags || []).slice(0, 4).map((t: string) => (
+            <Badge
+              key={t}
+              variant="secondary"
+              className="text-xs cursor-pointer hover:bg-primary/20 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onTagClick?.(t); }}
+            >
+              {t}
+            </Badge>
           ))}
         </div>
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
@@ -37,8 +68,17 @@ function GameCard({ game }: { game: any }) {
 }
 
 export function HomePage() {
-  const { data, isLoading, error } = useGames();
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const { data, isLoading, error } = useGames(activeTag || undefined);
   const navigate = useNavigate();
+
+  // Collect all tags from games
+  const allTags = useMemo(() => {
+    if (!data?.items) return [];
+    const set = new Set<string>();
+    data.items.forEach((g: any) => (g.tags || []).forEach((t: string) => set.add(t)));
+    return Array.from(set).sort();
+  }, [data?.items]);
 
   return (
     <div className="space-y-12">
@@ -70,9 +110,35 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Tag Filter Bar */}
+      {allTags.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground mr-2">Filter:</span>
+          <Badge
+            variant={activeTag === null ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setActiveTag(null)}
+          >
+            All
+          </Badge>
+          {allTags.map((t) => (
+            <Badge
+              key={t}
+              variant={activeTag === t ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => setActiveTag(activeTag === t ? null : t)}
+            >
+              {t}
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {/* Game Grid */}
       <section id="games-grid" className="space-y-6">
-        <h2 className="text-2xl font-bold">Featured Games</h2>
+        <h2 className="text-2xl font-bold">
+          {activeTag ? `${activeTag} Games` : "Featured Games"}
+        </h2>
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -80,20 +146,18 @@ export function HomePage() {
         ) : error ? (
           <div className="text-center py-20 text-muted-foreground">
             <p>Failed to load games. Make sure the backend is running.</p>
-            <p className="text-sm mt-2">Run: cd backend && uvicorn app.main:app --reload</p>
           </div>
         ) : !data?.items?.length ? (
           <div className="text-center py-20 text-muted-foreground">
             <Gamepad2 className="mx-auto h-12 w-12 mb-4 opacity-30" />
-            <p>No games published yet. Be the first creator!</p>
-            <Button className="mt-4" variant="outline" onClick={() => navigate("/create")}>
-              Create First Game
-            </Button>
+            <p>{activeTag ? `No "${activeTag}" games yet.` : "No games published yet."}</p>
+            {activeTag && <Button className="mt-4" variant="outline" onClick={() => setActiveTag(null)}>Clear Filter</Button>}
+            {!activeTag && <Button className="mt-4" variant="outline" onClick={() => navigate("/create")}>Create First Game</Button>}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {data.items.map((game: any) => (
-              <GameCard key={game.id} game={game} />
+              <GameCard key={game.id} game={game} onTagClick={(t) => setActiveTag(t)} />
             ))}
           </div>
         )}

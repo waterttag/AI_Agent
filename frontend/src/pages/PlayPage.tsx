@@ -1,9 +1,11 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useGame } from "@/hooks/useGames";
+import { usePublishGame } from "@/hooks/usePublishGame";
+import { useAuthStore } from "@/lib/auth-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
-import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home } from "lucide-react";
+import { Loader2, ArrowLeft, Maximize2, Minimize2, User, Calendar, AlertTriangle, Home, Send, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 
 export function PlayPage() {
@@ -11,6 +13,11 @@ export function PlayPage() {
   const { data: game, isLoading, error } = useGame(gameId!);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const publishGame = usePublishGame();
+  const navigate = useNavigate();
+  const user = useAuthStore((s) => s.user);
+  const isAuthor = user && game && user.id === game.author_id;
+  const isPreview = game?.status === "preview";
 
   // Listen for Escape to exit fullscreen
   useEffect(() => {
@@ -70,6 +77,42 @@ export function PlayPage() {
           {/* Description */}
           {game.description && (
             <p className="text-muted-foreground">{game.description}</p>
+          )}
+
+          {/* Preview banner — shown to author only */}
+          {isPreview && isAuthor && (
+            <div className="flex items-center gap-4 p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-yellow-500" />
+                  <span className="font-semibold text-yellow-500">Preview Mode</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This game is not yet published. Only you can see it. Review and publish when ready.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/create`)}
+                >
+                  Edit & Regenerate
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => publishGame.mutate(game.id)}
+                  disabled={publishGame.isPending}
+                >
+                  {publishGame.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Publish Now
+                </Button>
+              </div>
+            </div>
           )}
         </>
       )}

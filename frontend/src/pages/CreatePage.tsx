@@ -152,16 +152,16 @@ export function CreatePage() {
       )}
 
       {step === "done" && (
-        <Card className="border-border border-green-500/30">
+        <Card className="border-border border-yellow-500/30">
           <CardContent className="py-12 space-y-6 text-center">
-            <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+            <CheckCircle className="mx-auto h-12 w-12 text-yellow-500" />
             <div>
-              <h2 className="text-xl font-semibold text-green-500">Game Created!</h2>
-              <p className="text-muted-foreground mt-1">Your AI-generated game is ready to play</p>
+              <h2 className="text-xl font-semibold text-yellow-500">Game Ready for Preview</h2>
+              <p className="text-muted-foreground mt-1">Review your game. Only you can see it until you publish.</p>
             </div>
             <div className="flex gap-4 justify-center">
               <Button onClick={() => navigate(`/play/${gameId}`)} size="lg">
-                <Play className="mr-2 h-4 w-4" /> Play Now
+                <Play className="mr-2 h-4 w-4" /> Preview & Publish
               </Button>
               <Button variant="outline" onClick={() => { setStep("form"); setTaskId(null); setGameId(null); setFiles([]); setPromptText(""); setTitle(""); setDescription(""); setTags([]); }} size="lg">
                 Create Another

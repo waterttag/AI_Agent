@@ -194,11 +194,11 @@ class GameGenerationHarness:
                     llm_response_raw=html_code[:50000],  # Store for direct serving
                 )
 
-                # Update game
+                # Update game — set to "preview" so creator can review before publishing
                 game = await game_service.get_game(db, game_id)
                 if game:
                     game.game_url = oss_url
-                    game.status = "published"
+                    game.status = "preview"  # Not published yet — creator must approve
                     await db.commit()
 
         except Exception as e:

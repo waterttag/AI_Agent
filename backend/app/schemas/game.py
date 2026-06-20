@@ -17,6 +17,7 @@ class GameUpdate(BaseModel):
     description: Optional[str] = Field(default=None, max_length=5000)
     tags: Optional[list[str]] = None
     cover_image_url: Optional[str] = None
+    status: Optional[str] = None
 
 
 class GameAssetResponse(BaseModel):

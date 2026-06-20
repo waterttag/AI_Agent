@@ -33,7 +33,7 @@ export interface Game {
   author_id: string;
   author_name?: string | null;
   tags: string[];
-  status: "draft" | "generating" | "published" | "failed";
+  status: "draft" | "generating" | "preview" | "published" | "failed";
   prompt_text: string | null;
   play_count: number;
   created_at: string;
