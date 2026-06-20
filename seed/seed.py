@@ -24,9 +24,8 @@ else:
 from app.database import async_session, engine, Base
 from app.models import User, Game
 from app.utils.security import hash_password
-from app.utils.minio_client import get_minio_client, ensure_bucket
+from app.utils.s3_client import get_s3_client, ensure_bucket
 from app.config import settings
-from minio import Minio
 
 # SEED_DIR defined above (handles Docker vs local)
 
@@ -79,8 +78,8 @@ async def create_test_user() -> User:
 
 
 async def upload_and_create_games(user: User):
-    """Upload HTML games to MinIO and create DB records."""
-    client = get_minio_client()
+    """Upload HTML games to S3-compatible storage and create DB records."""
+    client = get_s3_client()
     bucket = settings.minio_bucket
     ensure_bucket()
 
@@ -104,22 +103,23 @@ async def upload_and_create_games(user: User):
             await db.commit()
             await db.refresh(game)
 
-            # Upload HTML to MinIO
+            # Upload HTML to S3-compatible storage
             from io import BytesIO
             oss_key = f"games/{game.id}/index.html"
             with open(html_path, "rb") as f:
                 html_data = f.read()
 
             client.put_object(
-                bucket_name=bucket,
-                object_name=oss_key,
-                data=BytesIO(html_data),
-                length=len(html_data),
-                content_type="text/html",
+                Bucket=bucket,
+                Key=oss_key,
+                Body=BytesIO(html_data),
+                ContentType="text/html",
+                ACL="public-read",
             )
 
             # Update game URL
-            game.game_url = f"http://{settings.minio_endpoint}/{bucket}/{oss_key}"
+            scheme = "https" if settings.minio_secure else "http"
+            game.game_url = f"{scheme}://{settings.minio_endpoint}/{bucket}/{oss_key}"
             await db.commit()
 
             print(f"Seeded: {game.title} → {game.game_url}")

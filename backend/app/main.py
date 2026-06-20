@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import engine, Base
-from app.utils.minio_client import ensure_bucket
+from app.utils.s3_client import ensure_bucket
 from app.api import api_router
 
 # Locate frontend build directory — handles local dev and Docker paths

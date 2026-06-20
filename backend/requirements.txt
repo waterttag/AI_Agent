@@ -13,8 +13,10 @@ alembic==1.13.1
 celery[redis]==5.4.0
 redis==5.0.7
 
-# MinIO Object Storage
+# MinIO Object Storage (local dev)
 minio==7.2.7
+# S3 Object Storage (production — Alibaba OSS / AWS S3 / Cloudflare R2)
+boto3==1.34.144
 
 # Auth
 python-jose[cryptography]==3.3.0
