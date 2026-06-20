@@ -194,11 +194,12 @@ class GameGenerationHarness:
                     llm_response_raw=html_code[:50000],  # Store for direct serving
                 )
 
-                # Update game — set to "preview" so creator can review before publishing
+                # Update game — set to "preview", use API endpoint for reliable iframe loading
                 game = await game_service.get_game(db, game_id)
                 if game:
-                    game.game_url = oss_url
-                    game.status = "preview"  # Not published yet — creator must approve
+                    # Store API endpoint as primary URL (avoids OSS Content-Disposition issues)
+                    game.game_url = f"/api/games/{game_id}/play-html"
+                    game.status = "preview"
                     await db.commit()
 
         except Exception as e:

@@ -61,6 +61,7 @@ async def upload_html(game_id: str, html_content: str) -> str:
         Key=oss_key,
         Body=BytesIO(data),
         ContentType="text/html",
+        ContentDisposition="inline",
         ACL="public-read",
     )
 

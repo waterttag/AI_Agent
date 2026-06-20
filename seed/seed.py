@@ -117,13 +117,8 @@ async def upload_and_create_games(user: User):
                 ACL="public-read",
             )
 
-            # Update game URL — OSS uses virtual-hosted, MinIO uses path style
-            scheme = "https" if settings.minio_secure else "http"
-            ep = settings.minio_endpoint
-            if "aliyuncs.com" in ep or "amazonaws.com" in ep:
-                game.game_url = f"{scheme}://{bucket}.{ep}/{oss_key}"
-            else:
-                game.game_url = f"{scheme}://{ep}/{bucket}/{oss_key}"
+            # Update game URL — use API endpoint for reliable iframe loading
+            game.game_url = f"/api/games/{game.id}/play-html"
             await db.commit()
 
             print(f"Seeded: {game.title} → {game.game_url}")
