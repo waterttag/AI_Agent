@@ -1,0 +1,81 @@
+services:
+  # --- Backend API ---
+  - type: web
+    name: aigame-backend
+    env: python
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aigame-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: aigame-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_MINUTES
+        value: "1440"
+      - key: MINIO_ENDPOINT
+        value: ""
+      - key: MINIO_ACCESS_KEY
+        value: ""
+      - key: MINIO_SECRET_KEY
+        value: ""
+      - key: MINIO_BUCKET
+        value: ai-game-platform
+      - key: MINIO_SECURE
+        value: "true"
+      - key: LLM_PROVIDER
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: deepseek-chat
+      - key: CORS_ORIGINS
+        value: '["https://YOUR_VERCEL_APP.vercel.app","http://localhost:5173"]'
+
+  # --- Celery Worker ---
+  - type: worker
+    name: aigame-worker
+    env: python
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.celery_app worker --loglevel=info --pool=solo
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aigame-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: aigame-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        value: ""
+      - key: MINIO_ENDPOINT
+        value: ""
+      - key: MINIO_ACCESS_KEY
+        value: ""
+      - key: MINIO_SECRET_KEY
+        value: ""
+      - key: MINIO_BUCKET
+        value: ai-game-platform
+      - key: LLM_PROVIDER
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: deepseek-chat
+
+# --- PostgreSQL ---
+databases:
+  - name: aigame-db
+    plan: free

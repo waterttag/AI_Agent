@@ -13,7 +13,17 @@ class Settings(BaseSettings):
     """All environment variables, loaded from .env file."""
 
     # Database
-    database_url: str = f"sqlite+aiosqlite:///{PROJECT_ROOT / 'app.db'}"
+    database_url: str = ""  # If empty, fall back to default SQLite
+
+    def get_database_url(self) -> str:
+        """Return effective database URL with fallback."""
+        if self.database_url:
+            return self.database_url
+        # Default SQLite
+        db_path = PROJECT_ROOT / "app.db"
+        if os.path.exists("/data"):
+            db_path = Path("/data/app.db")
+        return f"sqlite+aiosqlite:///{db_path}"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
