@@ -41,4 +41,4 @@ celerybeat-schedule*
 # Coverage
 htmlcov/
 .coverage
-.docx
+*.docx

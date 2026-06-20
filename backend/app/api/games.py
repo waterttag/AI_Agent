@@ -163,7 +163,7 @@ async def generate_game(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Start AI game generation. Creates a Celery task."""
+    """Start AI game generation. Uses Celery if available, falls back to in-process."""
     if settings.llm_provider == "none" or not settings.llm_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -194,13 +194,33 @@ async def generate_game(
 
     await db.commit()
 
-    # Enqueue Celery task
-    from app.tasks.game_gen import generate_game_task
-    generate_game_task.delay(
-        task_id=str(task.id),
-        game_id=str(game_id),
-        user_prompt=data.prompt_text,
-        asset_ids=asset_ids,
-    )
+    # Try Celery first, fall back to in-process background task
+    try:
+        from app.tasks.game_gen import generate_game_task
+        generate_game_task.delay(
+            task_id=str(task.id),
+            game_id=str(game_id),
+            user_prompt=data.prompt_text,
+            asset_ids=asset_ids,
+        )
+    except Exception:
+        # Celery/Redis not available — run in-process via background thread
+        import asyncio
+        import threading
+        from app.agent.harness import GameGenerationHarness
+        from app.agent.adapters import create_adapter
+
+        def _run_in_thread():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                GameGenerationHarness(create_adapter()).run(
+                    task_id=str(task.id),
+                    game_id=str(game_id),
+                    user_prompt=data.prompt_text,
+                    asset_ids=asset_ids,
+                )
+            )
+        threading.Thread(target=_run_in_thread, daemon=True).start()
 
     return TaskResponse.model_validate(task)
