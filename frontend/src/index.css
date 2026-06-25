@@ -1,36 +1,270 @@
+/**
+ * index.css — 全局样式与 Tailwind CSS 主题配置
+ * ==========================================================================
+ * 本文件负责：
+ *   1. 注入 Tailwind CSS 的基础层、组件层、工具层
+ *   2. 通过 CSS 自定义属性（CSS Custom Properties，即 CSS 变量）
+ *      定义深色主题的颜色语义令牌（Design Tokens）
+ *   3. 将 Tailwind 的语义类名（如 bg-background）映射到 CSS 变量
+ */
+
+/* ====================================================================== */
+/* Tailwind CSS 三大指令（Directives）                                    */
+/* ====================================================================== */
+/* 这三个 @tailwind 指令是 Tailwind CSS 的核心机制，每个指令对应一个
+   "层"（layer），层之间的顺序决定了最终的 CSS 优先级。
+
+   编译过程：
+     当运行 npm run build 或 npm run dev 时，Tailwind 会扫描代码中
+     所有类名，将对应的 CSS 规则注入到这三个层中。
+
+   @tailwind base;
+   --------------------------------------------------------------------
+   基础样式层（最低优先级）：
+     - 包含 CSS Reset / Normalize（统一各浏览器的默认样式差异）
+     - 例如：移除 margin、设置 box-sizing: border-box、统一字体大小
+     - 也包含 Preflight（Tailwind 的 CSS reset）
+     - 这是 Tailwind 的"地基"，所有其他样式都建立在它之上
+
+   @tailwind components;
+   --------------------------------------------------------------------
+   组件样式层（中等优先级）：
+     - 包含通过 @layer components { ... } 定义的组件类
+     - 也包含 @apply 提取的复合样式类（如 .btn, .card）
+     - 优先级高于 base 层，低于 utilities 层
+     - 设计意图：让你定义可复用的组件样式，可以用 utility 类覆盖
+
+   @tailwind utilities;
+   --------------------------------------------------------------------
+   工具样式层（最高优先级）：
+     - 包含所有 utility 类：如 flex, p-4, text-lg, bg-red-500
+     - 优先级最高，保证 utility 类能覆盖其他样式
+     - 这是 Tailwind "utility-first" 理念的核心：
+       通过组合原子化的工具类来构建界面，而不是写传统 CSS
+
+   层的层级关系（从低到高）：
+     base < components < utilities
+     这保证了：工具类 > 组件类 > 基础样式
+     这样的优先级设计让你总能通过 utility 类微调任何样式
+*/
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ====================================================================== */
+/* @layer base — CSS 自定义属性定义（Design Tokens）                      */
+/* ====================================================================== */
+/* @layer base 将以下样式注入到 Tailwind 的 base 层，
+   保证它们比 components 和 utilities 的优先级低，可以被覆盖。
+
+   这里使用 HSL 颜色空间定义 CSS 自定义属性（CSS 变量）。
+*/
+
 @layer base {
+  /* ------------------------------------------------------------------ */
+  /* :root 伪类 — 全局 CSS 变量的默认值                                */
+  /* ------------------------------------------------------------------ */
+  /* :root 等价于 <html> 选择器，但优先级更高（伪类比标签选择器优先级高）。
+     在这里定义为深色主题（dark-first 策略）——应用默认就是深色模式。
+
+     为什么使用 CSS 自定义属性（CSS 变量）？
+       1. 动态切换主题：只需要修改变量的值，所有引用该变量的元素自动更新
+          例如：切换日间模式时，换一套 HSL 值，整个页面颜色全部改变
+       2. 语义化命名：--background 比 #000000 或 bg-gray-900 更清晰
+          变量名描述了"用途"而非"具体的颜色值"
+       3. Tailwind 集成：Tailwind 通过 --color-* 约定自动生成类名，
+          配合自定义语义令牌可创建 bg-background 等语义类
+
+     为什么用 HSL 而不是 Hex 或 RGB？
+       HSL = Hue（色相）+ Saturation（饱和度）+ Lightness（亮度）
+
+       HSL vs Hex（如 #1a1a2e）：
+         - Hex 是编码后的值，人眼无法直观理解
+         - #1a1a2e 是什么颜色？偏蓝还是偏紫？没人能一眼看出来
+         - 修改 Hex 值需要借助取色器，无法凭直觉调整
+
+       HSL vs RGB（如 rgb(26, 26, 46)）：
+         - RGB 基于"红绿蓝三色光混合"，不符合人眼对颜色的感知模型
+         - 要调亮一个颜色：需要同时调高 R、G、B 三个值，还要保持比例
+         - 要改变色相：需要重新计算三个值的关系
+
+       HSL 的优势：
+         1. 直观可预测：
+            - H（色相 0-360）：0=红, 120=绿, 240=蓝, 360=红（色相环）
+            - S（饱和度 0-100%）：0%=灰色, 100%=纯色
+            - L（亮度 0-100%）：0%=黑, 50%=正色, 100%=白
+         2. 方便调整主题：
+            - 要调亮一点：只需加大 L 值（lightness）
+            - 要调灰一点：只需减小 S 值（saturation）
+            - 要换个色系：只需改变 H 值（hue），保持 S/L 不变
+         3. 方便生成色阶：
+            - 同一个 Hue/Saturation，只需变化 Lightness
+            - 如 --primary: 263 70% 50% → 更亮的变体：263 70% 65%
+
+       本项目使用的 HSL 格式：
+         格式：H S% L%（用空格分隔，不用逗号，这是 CSS 新标准）
+         示例：240 10% 3.9%
+           - H=240（蓝色系）
+           - S=10%（低饱和度，接近灰色）
+           - L=3.9%（极暗，接近黑色）
+         配合 Tailwind：bg-background → 解析为 hsl(240 10% 3.9%)
+
+       Tailwind 与 HSL 变量的配合：
+         Tailwind 通过 --<name> 的命名约定识别语义颜色：
+           --background  →  bg-background、text-background
+           --foreground  →  bg-foreground、text-foreground
+           --primary     →  bg-primary、text-primary、border-primary
+         这样写 class="bg-primary text-primary-foreground" 就能使用主题色
+  */
   :root {
+    /* --background: 页面主背景色
+       H=240(蓝) S=10%(低饱和) L=3.9%(极暗) → 几乎纯黑的蓝调背景
+       类似 #0b0b0e 在深色模式下非常柔和，不刺眼 */
     --background: 240 10% 3.9%;
+
+    /* --foreground: 页面主文字色
+       H=0 S=0%(无彩色) L=98%(极亮) → 纯白，对比度极高 */
     --foreground: 0 0% 98%;
+
+    /* --card: 卡片/容器背景色
+       比 background 略亮一点（5.9% vs 3.9%），形成微妙的层次感
+       这是"暗色主题分层"的关键技巧：用不同亮度区分不同层级 */
     --card: 240 10% 5.9%;
+
+    /* --card-foreground: 卡片内的文字颜色（同 foreground） */
     --card-foreground: 0 0% 98%;
+
+    /* --primary: 主题色/品牌色
+       H=263(紫蓝) S=70%(高饱和) L=50%(中等亮度)
+       紫色系传递"创意/AI"的品牌感，高饱和度让主题色在暗色背景下突出 */
     --primary: 263 70% 50%;
+
+    /* --primary-foreground: 主题色上的文字（如按钮上的文字）
+       白色文字在紫色背景上可读性好 */
     --primary-foreground: 0 0% 98%;
+
+    /* --secondary: 次要背景色（比 card 更亮一点）
+       用于次要元素：标签、分隔线、次级按钮等 */
     --secondary: 240 3.7% 15.9%;
+
+    /* --secondary-foreground: 次要背景上的文字色 */
     --secondary-foreground: 0 0% 98%;
+
+    /* --muted: 弱化/禁用元素的背景色
+       与 secondary 值相同，说明在某些场景下可互换 */
     --muted: 240 3.7% 15.9%;
+
+    /* --muted-foreground: 弱化文字的颜色
+       亮度降到 64.9%，呈灰色，表示"辅助信息/不重要的文字"
+       这是信息层级设计的关键：主要文字白，次要文字灰 */
     --muted-foreground: 240 5% 64.9%;
+
+    /* --accent: 强调色（用于 hover、选中状态等）
+       值与 secondary 相同，当前设计中 accent 和 secondary 视觉一致 */
     --accent: 240 3.7% 15.9%;
+
+    /* --accent-foreground: 强调色上的文字 */
     --accent-foreground: 0 0% 98%;
+
+    /* --destructive: 危险/删除操作的颜色
+       H=0(红) S=62.8%(中高饱和) L=40.6%(暗红)
+       红色在 UI 中广泛约定为"删除/警告/错误"信号 */
     --destructive: 0 62.8% 40.6%;
+
+    /* --destructive-foreground: 危险色上的文字 */
     --destructive-foreground: 0 0% 98%;
+
+    /* --border: 边框颜色（与 secondary 一致）
+       深色模式下的边框非常微妙，仅提供最小视觉分隔 */
     --border: 240 3.7% 15.9%;
+
+    /* --input: 输入框背景色（与 border 一致） */
     --input: 240 3.7% 15.9%;
+
+    /* --ring: 聚焦环/轮廓颜色（与 primary 一致）
+       用于表单元素的 :focus 状态，紫色环在深色背景下醒目 */
     --ring: 263 70% 50%;
+
+    /* --radius: 全局圆角半径
+       0.5rem（即 8px，假设 1rem=16px）
+       用于统一所有组件的圆角大小，保证视觉一致性 */
     --radius: 0.5rem;
   }
 }
 
+/* ====================================================================== */
+/* @layer base — 全局元素样式（应用语义令牌）                            */
+/* ====================================================================== */
+/* 第二个 @layer base 块，将语义 CSS 变量应用到具体元素上。
+   Tailwind 允许多个 @layer 块，它们会合并到同一层中。 */
+
 @layer base {
+  /* ------------------------------------------------------------------ */
+  /* 全局通配符 * — 为所有元素设置默认边框颜色                        */
+  /* ------------------------------------------------------------------ */
+  /* @apply 是 Tailwind 的指令，用于将 Tailwind 工具类"合并"到自定义
+     CSS 规则中，避免在 HTML 中重复写大量类名。
+
+     @apply border-border 的含义：
+       相当于给所有元素设置 border-color: hsl(var(--border))
+       这样任何使用 border 的元素自动使用主题边框色，
+       不需要每次写 class="border border-gray-700"
+
+     @apply 的设计哲学：
+       - 当你在多个地方需要相同的样式组合时，用 @apply 抽取为复合类
+       - 但 Tailwind 官方建议谨慎使用 @apply，过度使用会失去
+         "utility-first" 的优势（样式和 HTML 分离，维护困难）
+       - 适用于"全局默认样式"场景（如 * 通配符），因为不可能
+         在每个 HTML 元素上写 class="border-border"
+  */
   * {
     @apply border-border;
   }
+
+  /* ------------------------------------------------------------------ */
+  /* body — 页面主体的全局样式                                        */
+  /* ------------------------------------------------------------------ */
+  /* @apply bg-background text-foreground 的含义：
+       - bg-background → background-color: hsl(var(--background))
+       - text-foreground → color: hsl(var(--foreground))
+
+     这样做的好处：
+       1. 不需要在每个页面组件中设置背景和文字颜色
+       2. 切换主题时，只需改变 CSS 变量的值，所有元素自动响应
+       3. font-family 使用系统字体栈，确保跨平台的最佳字体体验：
+          - Inter: 优先使用的现代 UI 字体（Google Fonts）
+          - system-ui: 系统默认 UI 字体（Windows=Segoe UI, Mac=SF Pro）
+          - -apple-system: Mac 旧版系统字体（向后兼容）
+          - sans-serif: 最终的 fallback，通用无衬线字体
+  */
   body {
     @apply bg-background text-foreground;
     font-family: Inter, system-ui, -apple-system, sans-serif;
   }
 }
+
+/* ===========================================================================
+   扩展知识：完整的主题切换方案
+
+   当前文件只定义了深色主题（:root），如果需要日间/深色切换：
+
+   方式一：class 策略（推荐，Tailwind 默认）
+     在 tailwind.config.js 中设置 darkMode: "class"，然后：
+       <html class="dark">  → 应用 :root（当前）的深色变量
+       <html>              → 应用新的日间变量（需另行定义）
+
+   方式二：media 策略（跟随系统）
+     在 tailwind.config.js 中设置 darkMode: "media"，然后：
+       @media (prefers-color-scheme: dark) {
+         :root { ... 深色变量 ... }
+       }
+       @media (prefers-color-scheme: light) {
+         :root { ... 日间变量 ... }
+       }
+
+   本项目当前为"纯深色主题"（dark-only），没有日间切换。
+   这种 "dark-first" 策略在 AI 工具/开发者工具中很常见：
+     - 深色背景减少视觉疲劳（长时间使用）
+     - 产品定位偏向"专业/技术感"
+     - 代码编辑器等深度使用场景天然适合暗色
+   =========================================================================== */

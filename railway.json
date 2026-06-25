@@ -1,5 +1,40 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
+  // ============================================================
+  // Railway 部署配置文件
+  // ============================================================
+  // Railway 是一个面向开发者的 PaaS 平台，支持多种构建方式。
+  //
+  // 【为什么选择 DOCKERFILE 而不是 NIXPACKS？】
+  //   Railway 默认识别项目并自动选择构建器（Buildpack / Nixpacks），
+  //   但通过此配置文件显式指定 DOCKERFILE builder，原因：
+  //
+  //   1. NIXPACKS（Railway 默认）
+  //      - Nixpacks 自动检测项目语言并生成 Dockerfile
+  //      - 优点：零配置，对简单项目开箱即用
+  //      - 缺点：
+  //        * 对多语言混合项目（Python + Node.js 前端）支持不佳：
+  //          Nixpacks 倾向于只检测一种语言，忽略另一个
+  //        * 无法精确控制构建过程：多阶段构建、COPY --from、
+  //          构建缓存策略、npm ci vs npm install 等关键配置
+  //          无法通过 Nixpacks 指定
+  //        * 生成的 Dockerfile 不透明，出问题难以调试
+  //        * 本项目的多阶段构建（先 build 前端，再 COPY dist 到
+  //          Python 镜像）超出了 Nixpacks 自动检测能力
+  //
+  //   2. DOCKERFILE（本项目选择）
+  //      - 使用根目录的 Dockerfile 进行构建
+  //      - 优点：
+  //        * 完全控制：多阶段构建、层缓存优化、镜像体积控制
+  //        * 本地 docker-compose 和 Railway 使用同一个 Dockerfile，
+  //          确保环境一致性（"在我机器上能跑"问题的反面）
+  //        * 精确选择基础镜像（python:3.11-slim）
+  //        * npm ci 保证依赖版本锁定和幂等构建
+  //        * 构建结果可复现，适合 CI/CD
+  //      - 缺点：需要手动维护 Dockerfile
+  //
+  //   结论：对于多语言混合（Python 后端 + Node 前端）且需要
+  //   多阶段构建的项目，显式 DOCKERFILE 是唯一正确选择。
   "build": {
     "builder": "DOCKERFILE"
   }

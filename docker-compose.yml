@@ -1,61 +1,130 @@
+# ============================================================
+# AI Native 互动游戏平台 — Docker Compose 编排文件
+# ============================================================
+# 按职责拆分为 6 个服务：3 个基础设施 + 2 个应用 + 1 个一次性任务
+#
+# 【为什么是 6 个服务？】
+#   - redis:      Celery 消息队列 + 任务结果缓存
+#   - minio:      本地开发用 S3 兼容对象存储（生产环境使用阿里云 OSS）
+#   - backend:    FastAPI 主应用，处理 HTTP 请求、认证、CRUD
+#   - worker:     Celery Worker 独立进程，处理 AI 生成长耗时任务
+#   - frontend:   Vite 开发服务器，提供 React SPA
+#   - seed:       一次性启动任务，注入示例游戏和测试用户数据
+#
+# 【为什么 backend 和 worker 共用同一个 Dockerfile (./backend)？】
+#   backend 和 worker 共享完全相同的代码库和 Python 依赖（FastAPI、
+#   SQLAlchemy、Celery、boto3 等），唯一的区别是启动命令不同：
+#   - backend 启动 uvicorn HTTP 服务器
+#   - worker  启动 celery worker 进程
+#   共用 Dockerfile 避免维护两份几乎完全相同的镜像构建文件，
+#   通过 docker-compose 的 command 字段覆盖默认启动命令即可。
+#   seed 服务也使用同一个镜像（./backend），因为种子脚本需要
+#   相同的 ORM、boto3 客户端等依赖。
+# ============================================================
+
 services:
-  # --- Infrastructure ---
+  # --- 基础设施层 ---
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine                 # alpine 变体，镜像体积最小（约 15MB）
     container_name: aigame-redis
     ports:
-      - "6380:6379"
+      - "6380:6379"                       # 映射到本地 6380 端口，避免与系统 Redis 冲突
     volumes:
-      - redis_data:/data
+      - redis_data:/data                  # 持久化 RDB/AOF 数据
+    # --------------------------------------------------------
+    # 【healthcheck（健康检查）详解】
+    #   作用：让 Docker 和依赖方知道服务是否真正"就绪可用"
+    #   仅靠 depends_on 等待容器启动不够——容器启动不等于服务就绪
+    #   （Redis 进程可能在加载数据、MinIO 可能在初始化）
+    #   test:   健康检查命令，redis-cli ping 是最轻量的连通性检测
+    #   interval: 每 5 秒执行一次检查
+    #   timeout:  单次检查超过 3 秒视为失败
+    #   retries:  连续 5 次失败后标记为 unhealthy
+    #   一旦 unhealthy，dependent services 的 depends_on 条件将不满足
+    # --------------------------------------------------------
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
-    restart: unless-stopped
+    restart: unless-stopped               # 除非手动 stop，否则总是自动重启
 
   minio:
-    image: minio/minio:latest
+    image: minio/minio:latest             # S3 兼容对象存储，开发环境替代阿里云 OSS
     container_name: aigame-minio
     command: server /data --console-address ":9001"
+    # MinIO 使用两个端口：
+    #   9000 — S3 API 端口（SDK 上传/下载用）
+    #   9001 — Web 控制台端口（浏览器管理用）
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_USER: minioadmin         # 开发环境默认凭据，生产务必修改
       MINIO_ROOT_PASSWORD: minioadmin
     volumes:
-      - minio_data:/data
+      - minio_data:/data                  # 持久化上传的文件
     healthcheck:
+      # 通过 HTTP 接口检查 MinIO 是否存活
+      # curl -f 会在 HTTP 状态码非 2xx 时返回失败
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 3s
       retries: 5
     restart: unless-stopped
 
-  # --- Backend API ---
+  # --- 后端 API 服务 ---
   backend:
-    build: ./backend
+    build: ./backend                      # 使用 backend/Dockerfile 构建（本地开发用）
     container_name: aigame-backend
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///data/app.db
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=sqlite+aiosqlite:///data/app.db  # SQLite 零配置开发数据库
+      - REDIS_URL=redis://redis:6379/0                # 连接到 redis 服务（Docker 内部 DNS）
+      # MinIO 环境变量 —— 注意前缀仍然是 MINIO_
+      # 【为什么 boto3 迁移后仍保留 MINIO_ 前缀？】
+      #   项目从 minio-py SDK 迁移到 boto3 后，底层库变了，
+      #   但环境变量名作为外部配置接口不宜轻易修改：
+      #   1. 已有的 .env 文件、docker-compose.yml、Railway 环境变量
+      #      全部使用 MINIO_ 前缀，修改会破坏部署配置
+      #   2. boto3 本身不依赖特定前缀——它是通过代码读取 env 后
+      #      传给 boto3 客户端的，env 变量名由应用层自定义
+      #   3. 保持前缀一致降低迁移风险，只在内部适配层做映射即可
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_BUCKET=ai-game-platform
-      - MINIO_SECURE=false
+      - MINIO_SECURE=false               # 开发环境不使用 HTTPS
+      # --------------------------------------------------------
+      # 【${VAR:-default} — Bash 参数扩展语法】
+      #   ${JWT_SECRET:-change-me-in-production} 的含义：
+      #   如果环境变量 JWT_SECRET 已设置且非空 → 使用其值
+      #   如果环境变量 JWT_SECRET 未设置或为空  → 使用默认值 "change-me-in-production"
+      #   这种语法允许在 .env 文件中覆盖默认值，
+      #   而无需修改 docker-compose.yml 文件本身
+      #   类似的 ${LLM_API_KEY:-} 表示如果未设置则默认为空字符串
+      # --------------------------------------------------------
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - JWT_ALGORITHM=HS256
-      - JWT_EXPIRE_MINUTES=1440
-      - LLM_PROVIDER=${LLM_PROVIDER:-none}
+      - JWT_EXPIRE_MINUTES=1440           # Token 有效期 24 小时
+      - LLM_PROVIDER=${LLM_PROVIDER:-none}  # 开发环境默认不启用 LLM
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
-      - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]  # 允许前端开发服务器跨域
     volumes:
-      - backend_data:/data
+      - backend_data:/data                # SQLite 数据库持久化卷
+    # --------------------------------------------------------
+    # 【depends_on 条件详解：service_healthy vs service_started】
+    #   condition: service_healthy
+    #     → 等待依赖服务不仅"已启动"，而且"健康检查通过"
+    #     → 确保 Redis 能 ping 通、MinIO API 可访问后才启动 backend
+    #   condition: service_started（默认值，此处未使用）
+    #     → 仅等待容器进程启动，不关心服务是否真正就绪
+    #     → 可能导致 backend 启动时 Redis 还在加载数据，连接失败
+    #   结论：对有状态的基础设施服务（DB、Cache、MQ），必须用
+    #   service_healthy；对无状态或快速启动的服务可用默认值
+    # --------------------------------------------------------
     depends_on:
       redis:
         condition: service_healthy
@@ -63,12 +132,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # --- Celery Worker (AI Generation) ---
+  # --- Celery Worker（AI 生成任务消费者）---
   worker:
-    build: ./backend
+    build: ./backend                      # 与 backend 共用同一个 Dockerfile
     container_name: aigame-worker
+    # 覆盖默认 CMD，启动 Celery worker 而非 uvicorn
+    # --pool=solo: 单线程执行，因为 LLM API 调用是 IO 密集型非 CPU 密集型
+    #              同时避免 fork 导致 SQLAlchemy 连接池问题
     command: celery -A app.celery_app worker --loglevel=info --pool=solo
     environment:
+      # 与 backend 共享几乎全部环境变量，确保 ORM、S3 客户端配置一致
       - DATABASE_URL=sqlite+aiosqlite:///data/app.db
       - REDIS_URL=redis://redis:6379/0
       - MINIO_ENDPOINT=minio:9000
@@ -81,30 +154,32 @@ services:
       - LLM_API_KEY=${LLM_API_KEY:-}
       - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
     volumes:
-      - backend_data:/data
+      - backend_data:/data                # 与 backend 共享数据库文件
     depends_on:
       redis:
-        condition: service_healthy
+        condition: service_healthy        # Worker 强依赖 Redis 作为消息代理
       minio:
-        condition: service_healthy
+        condition: service_healthy        # 生成结果需要上传到对象存储
     restart: unless-stopped
 
-  # --- Frontend ---
+  # --- 前端开发服务器 ---
   frontend:
-    build: ./frontend
+    build: ./frontend                     # 使用 frontend/Dockerfile（Vite 开发服务器）
     container_name: aigame-frontend
     ports:
-      - "5173:5173"
+      - "5173:5173"                       # Vite 默认端口
     depends_on:
-      - backend
+      - backend                           # 默认 condition: service_started 即可
+                                          # 前端启动不依赖后端完全就绪
     restart: unless-stopped
 
-  # --- Seed (one-shot) ---
+  # --- 数据种子（一次性任务）---
   seed:
-    build: ./backend
+    build: ./backend                      # 复用后端镜像（需要 ORM + boto3 等依赖）
     container_name: aigame-seed
-    command: python /seed.py
+    command: python /seed.py              # 执行种子脚本
     environment:
+      # 种子脚本使用与 backend/worker 一致的连接信息
       - DATABASE_URL=sqlite+aiosqlite:///data/app.db
       - REDIS_URL=redis://redis:6379/0
       - MINIO_ENDPOINT=minio:9000
@@ -113,16 +188,21 @@ services:
       - MINIO_BUCKET=ai-game-platform
       - MINIO_SECURE=false
     volumes:
-      - ./seed/seed.py:/seed.py
-      - ./seed/games:/games
-      - backend_data:/data
+      # 挂载种子脚本和游戏 HTML 文件到容器内
+      - ./seed/seed.py:/seed.py           # 挂载单个文件：种子脚本
+      - ./seed/games:/games               # 挂载目录：3 款示例游戏 HTML
+      - backend_data:/data                # 共享数据库：种子数据写入后 backend 立即可见
     depends_on:
       minio:
-        condition: service_healthy
+        condition: service_healthy        # 上传 HTML 到 MinIO 前确保存储可用
       redis:
-        condition: service_healthy
+        condition: service_healthy        # Celery 消息队列就绪（种子可能触发任务）
 
+# ============================================================
+# 命名卷（Named Volumes）
+# Docker 管理存储位置，不依赖宿主机路径，跨平台兼容
+# ============================================================
 volumes:
-  redis_data:
-  minio_data:
-  backend_data:
+  redis_data:     # Redis 持久化（RDB 快照 + AOF 日志）
+  minio_data:     # MinIO 对象存储数据
+  backend_data:   # SQLite 数据库文件 + 可能的上传文件
